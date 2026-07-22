@@ -1,0 +1,148 @@
+{% extends 'layouts/base_public.html' %}
+
+{% block title %}Obras y Proyectos – APR{% endblock %}
+
+{% block content %}
+
+{# ── Hero interno ───────────────────────────────────────── #}
+<section class="relative pt-20 overflow-hidden">
+  <div class="absolute inset-0 bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800"></div>
+  <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+    <h1 class="text-4xl md:text-5xl font-heading text-white will-animate anim-fade-up">
+      Obras y Proyectos
+    </h1>
+    <p class="mt-4 text-lg text-navy-200 max-w-2xl will-animate anim-fade-up stagger-1">
+      Conozca los proyectos en ejecución, cortes programados y mejoras
+      de nuestra red de distribución.
+    </p>
+    <nav class="mt-6 flex items-center gap-2 text-sm text-navy-400">
+      <a href="{{ url_for('dashboard.index') }}" class="hover:text-white transition-colors">Inicio</a>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+      </svg>
+      <span class="text-white">Obras</span>
+    </nav>
+  </div>
+  <svg class="absolute bottom-0 left-0 w-full" viewBox="0 0 1440 60"
+       fill="none" preserveAspectRatio="none">
+    <path d="M0,30 C360,60 720,0 1080,30 C1260,45 1380,15 1440,30
+             L1440,60 L0,60 Z" fill="#faf9f7"/>
+  </svg>
+</section>
+
+{# ── Timeline de proyectos ──────────────────────────────── #}
+<section class="py-20">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    {# Cortes programados (alerta) #}
+    <div class="mb-16 bg-amber-50 border border-amber-200 rounded-2xl p-6 md:p-8">
+      <div class="flex items-start gap-4">
+        <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center
+                    justify-center shrink-0 mt-1">
+          <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor"
+               stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="font-heading text-xl text-amber-900">Cortes Programados</h3>
+          <p class="mt-2 text-sm text-amber-700 leading-relaxed">
+            <strong>15 de Febrero 2024, 08:00 – 16:00 hrs:</strong>
+            Corte de suministro por trabajos de mantención preventiva
+            en la red principal del sector centro. Se recomienda almacenar
+            agua con anticipación.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    {# Obras en ejecución #}
+    <h2 class="text-3xl font-heading text-navy-900 mb-8">Obras en Ejecución</h2>
+
+    <div class="space-y-8">
+      {# Obra 1 #}
+      <div class="flex flex-col md:flex-row gap-6 bg-white rounded-2xl p-6
+                  border border-sand-200 will-animate anim-fade-up">
+        <div class="md:w-48 shrink-0">
+          <span class="inline-block px-3 py-1 text-xs font-semibold text-teal
+                       bg-teal/10 rounded-full">
+            En curso
+          </span>
+          <p class="mt-2 text-xs text-stone-400">Inicio: Nov 2023</p>
+          <p class="text-xs text-stone-400">Avance: 70%</p>
+        </div>
+        <div>
+          <h3 class="font-heading text-xl text-navy-900 mb-2">
+            Ampliación de Red – Sector Norte
+          </h3>
+          <p class="text-sm text-stone-500 leading-relaxed">
+            Extensión de la red de distribución para abastecer nuevos
+            puntos de conexión en el sector norte. Incluye instalación
+            de 2.5 km de tubería PVC y 45 nuevas acometidas domiciliarias.
+          </p>
+          {# Barra de progreso #}
+          <div class="mt-4 h-2 bg-sand-200 rounded-full overflow-hidden max-w-md">
+            <div class="h-full bg-teal rounded-full" style="width: 70%"></div>
+          </div>
+        </div>
+      </div>
+
+      {# Obra 2 #}
+      <div class="flex flex-col md:flex-row gap-6 bg-white rounded-2xl p-6
+                  border border-sand-200 will-animate anim-fade-up stagger-2">
+        <div class="md:w-48 shrink-0">
+          <span class="inline-block px-3 py-1 text-xs font-semibold text-teal
+                       bg-teal/10 rounded-full">
+            En curso
+          </span>
+          <p class="mt-2 text-xs text-stone-400">Inicio: Ene 2024</p>
+          <p class="text-xs text-stone-400">Avance: 30%</p>
+        </div>
+        <div>
+          <h3 class="font-heading text-xl text-navy-900 mb-2">
+            Modernización de Medidores
+          </h3>
+          <p class="text-sm text-stone-500 leading-relaxed">
+            Reemplazo progresivo de medidores antiguos por equipos
+            digitales de mayor precisión. Etapa 1: sector centro y oriente
+            (120 medidores).
+          </p>
+          <div class="mt-4 h-2 bg-sand-200 rounded-full overflow-hidden max-w-md">
+            <div class="h-full bg-teal rounded-full" style="width: 30%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Obras finalizadas #}
+    <h2 class="text-3xl font-heading text-navy-900 mt-16 mb-8">
+      Obras Finalizadas
+    </h2>
+
+    <div class="space-y-6">
+      <div class="flex flex-col md:flex-row gap-6 bg-sand-50 rounded-2xl p-6
+                  border border-sand-200 will-animate anim-fade-up">
+        <div class="md:w-48 shrink-0">
+          <span class="inline-block px-3 py-1 text-xs font-semibold text-stone-500
+                       bg-stone-100 rounded-full">
+            Completada
+          </span>
+          <p class="mt-2 text-xs text-stone-400">2023</p>
+        </div>
+        <div>
+          <h3 class="font-heading text-xl text-navy-800 mb-2">
+            Rehabilitación de Estanque de Almacenamiento
+          </h3>
+          <p class="text-sm text-stone-500 leading-relaxed">
+            Impermeabilización y reparación estructural del estanque
+            principal de 200 m³ de capacidad, asegurando la reserva
+            de agua para la comunidad.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

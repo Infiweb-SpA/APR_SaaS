@@ -1,0 +1,390 @@
+{% extends 'layouts/base_admin.html' %}
+
+{% block title %}Gestión de Usuarios – APR Admin{% endblock %}
+
+{% block content %}
+
+<div class="max-w-7xl mx-auto">
+
+  {# ── Encabezado ─────────────────────────────────────── #}
+  <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+    <div>
+      <h1 class="text-3xl font-heading text-navy-900">Gestión de Usuarios</h1>
+      <p class="text-stone-500 mt-1">
+        Administre cuentas, roles y permisos por módulo.
+      </p>
+    </div>
+    <button onclick="document.getElementById('createSection').classList.toggle('hidden')"
+            class="inline-flex items-center gap-2 px-5 py-2.5 bg-teal
+                   hover:bg-teal-dark text-white font-semibold rounded-xl
+                   transition-all duration-200 hover:shadow-lg shrink-0">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"
+           viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+      </svg>
+      Nuevo Usuario
+    </button>
+  </div>
+
+  {# ── Flash messages ─────────────────────────────────── #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="mb-6 space-y-3">
+        {% for category, message in messages %}
+          <div class="p-4 rounded-xl text-sm font-medium flex items-start gap-3
+                      {% if category == 'success' %}
+                        bg-teal/10 text-teal-dark border border-teal/20
+                      {% else %}
+                        bg-red-50 text-red-700 border border-red-200
+                      {% endif %}">
+            {% if category == 'success' %}
+              <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor"
+                   stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            {% else %}
+              <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor"
+                   stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9
+                         3.75h.008v.008H12v-.008z"/>
+              </svg>
+            {% endif %}
+            <span>{{ message }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {# ── Formulario Crear Usuario (colapsable) ──────────── #}
+  <div id="createSection"
+       class="hidden mb-8 bg-white rounded-2xl border border-sand-200
+              shadow-sm overflow-hidden">
+    <div class="px-6 py-4 bg-navy-950 border-b border-navy-800">
+      <h3 class="font-heading text-white text-lg">Crear Nuevo Usuario</h3>
+    </div>
+    <form method="POST" action="{{ url_for('auth.user_create') }}"
+          class="p-6 space-y-5">
+      <div class="grid sm:grid-cols-2 gap-5">
+
+        {# RUT #}
+        <div>
+          <label for="new_rut" class="block text-sm font-semibold text-navy-900 mb-1.5">
+            RUT
+          </label>
+          <input type="text" id="new_rut" name="rut"
+                 class="rut-input w-full px-4 py-2.5 rounded-xl border border-sand-200
+                        bg-white text-stone-900 placeholder-stone-400
+                        focus:outline-none focus:ring-2 focus:ring-teal/40
+                        focus:border-teal transition-all"
+                 placeholder="12.345.678-9" required>
+        </div>
+
+        {# Nombre #}
+        <div>
+          <label for="new_nombre" class="block text-sm font-semibold text-navy-900 mb-1.5">
+            Nombre Completo
+          </label>
+          <input type="text" id="new_nombre" name="nombre"
+                 class="w-full px-4 py-2.5 rounded-xl border border-sand-200
+                        bg-white text-stone-900 placeholder-stone-400
+                        focus:outline-none focus:ring-2 focus:ring-teal/40
+                        focus:border-teal transition-all"
+                 placeholder="Juan Pérez" required>
+        </div>
+
+        {# Email #}
+        <div>
+          <label for="new_email" class="block text-sm font-semibold text-navy-900 mb-1.5">
+            Correo Electrónico
+          </label>
+          <input type="email" id="new_email" name="email"
+                 class="w-full px-4 py-2.5 rounded-xl border border-sand-200
+                        bg-white text-stone-900 placeholder-stone-400
+                        focus:outline-none focus:ring-2 focus:ring-teal/40
+                        focus:border-teal transition-all"
+                 placeholder="correo@ejemplo.cl" required>
+        </div>
+
+        {# Rol #}
+        <div>
+          <label for="new_role" class="block text-sm font-semibold text-navy-900 mb-1.5">
+            Rol
+          </label>
+          <select id="new_role" name="role"
+                  class="w-full px-4 py-2.5 rounded-xl border border-sand-200
+                         bg-white text-stone-900
+                         focus:outline-none focus:ring-2 focus:ring-teal/40
+                         focus:border-teal transition-all">
+            {% for key, label in role_labels.items() %}
+              <option value="{{ key }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        {# Contraseña #}
+        <div>
+          <label for="new_password" class="block text-sm font-semibold text-navy-900 mb-1.5">
+            Contraseña
+          </label>
+          <input type="password" id="new_password" name="password"
+                 class="w-full px-4 py-2.5 rounded-xl border border-sand-200
+                        bg-white text-stone-900 placeholder-stone-400
+                        focus:outline-none focus:ring-2 focus:ring-teal/40
+                        focus:border-teal transition-all"
+                 placeholder="Mínimo 6 caracteres" required minlength="6">
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 pt-2">
+        <button type="submit"
+                class="px-6 py-2.5 bg-teal hover:bg-teal-dark text-white
+                       font-semibold rounded-xl transition-all duration-200">
+          Crear Usuario
+        </button>
+        <button type="button"
+                onclick="document.getElementById('createSection').classList.add('hidden')"
+                class="px-6 py-2.5 border border-sand-200 text-stone-600
+                       hover:bg-sand-100 font-medium rounded-xl transition-all">
+          Cancelar
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {# ── Tabla de Usuarios ──────────────────────────────── #}
+  <div class="bg-white rounded-2xl border border-sand-200 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left">
+        <thead>
+          <tr class="border-b-2 border-navy-900 bg-sand-50">
+            <th class="py-3 px-4 font-heading text-sm text-navy-900">RUT</th>
+            <th class="py-3 px-4 font-heading text-sm text-navy-900">Nombre</th>
+            <th class="py-3 px-4 font-heading text-sm text-navy-900 hidden md:table-cell">Email</th>
+            <th class="py-3 px-4 font-heading text-sm text-navy-900">Rol</th>
+            <th class="py-3 px-4 font-heading text-sm text-navy-900 text-center">Estado</th>
+            <th class="py-3 px-4 font-heading text-sm text-navy-900 text-right">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="text-sm divide-y divide-sand-200">
+          {% for user in users %}
+            <tr class="hover:bg-sand-50 transition-colors" id="row-{{ user.id }}">
+              {# RUT #}
+              <td class="py-3 px-4 font-mono text-stone-700">{{ user.rut }}</td>
+
+              {# Nombre #}
+              <td class="py-3 px-4 font-medium text-stone-800">{{ user.nombre }}</td>
+
+              {# Email #}
+              <td class="py-3 px-4 text-stone-500 hidden md:table-cell">
+                {{ user.email }}
+              </td>
+
+              {# Rol (con badge) #}
+              <td class="py-3 px-4">
+                <form method="POST"
+                      action="{{ url_for('auth.user_update_role', user_id=user.id) }}"
+                      class="inline">
+                  <select name="role" onchange="this.form.submit()"
+                          class="text-xs px-2 py-1 rounded-lg border border-sand-200
+                                 bg-sand-50 text-stone-700 focus:outline-none
+                                 focus:ring-1 focus:ring-teal/30 cursor-pointer">
+                    {% for key, label in role_labels.items() %}
+                      <option value="{{ key }}"
+                              {% if user.role == key %}selected{% endif %}>
+                        {{ label }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </form>
+              </td>
+
+              {# Estado #}
+              <td class="py-3 px-4 text-center">
+                {% if user.is_active %}
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs
+                               font-semibold rounded-full bg-teal/10 text-teal-dark">
+                    <span class="w-1.5 h-1.5 rounded-full bg-teal"></span>
+                    Activo
+                  </span>
+                {% else %}
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs
+                               font-semibold rounded-full bg-red-50 text-red-600">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+                    Inactivo
+                  </span>
+                {% endif %}
+              </td>
+
+              {# Acciones #}
+              <td class="py-3 px-4">
+                <div class="flex items-center justify-end gap-2">
+
+                  {# Permisos #}
+                  <button onclick="togglePerms({{ user.id }})"
+                          class="p-1.5 rounded-lg text-navy-600 hover:bg-navy-50
+                                 transition-colors" title="Editar permisos">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                         stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110
+                               4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0
+                               4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2
+                               2 0 110-4m0 4v2m0-6V4"/>
+                    </svg>
+                  </button>
+
+                  {# Toggle activo/inactivo #}
+                  <form method="POST"
+                        action="{{ url_for('auth.user_toggle', user_id=user.id) }}"
+                        class="inline">
+                    <button type="submit"
+                            class="p-1.5 rounded-lg
+                                   {% if user.is_active %}
+                                     text-amber-600 hover:bg-amber-50
+                                   {% else %}
+                                     text-teal hover:bg-teal/10
+                                   {% endif %}
+                                   transition-colors"
+                            title="{% if user.is_active %}Desactivar{% else %}Activar{% endif %}">
+                      {% if user.is_active %}
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                             stroke-width="2" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M18.364 18.364A9 9 0 005.636 5.636m12.728
+                                   12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                        </svg>
+                      {% else %}
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                             stroke-width="2" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                      {% endif %}
+                    </button>
+                  </form>
+
+                  {# Reset contraseña #}
+                  <form method="POST"
+                        action="{{ url_for('auth.user_reset_password', user_id=user.id) }}"
+                        class="inline"
+                        onsubmit="return confirm('¿Generar nueva clave temporal para {{ user.nombre }}?')">
+                    <button type="submit"
+                            class="p-1.5 rounded-lg text-stone-500 hover:bg-stone-100
+                                   transition-colors" title="Resetear contraseña">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                           stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029
+                                 5.912c-.563-.097-1.159.026-1.563.43L10.5
+                                 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597
+                                 .237-1.17.659-1.591l6.499-6.499c.404-.404
+                                 .527-1 .43-1.563A6 6 0 1121.75 8.25z"/>
+                      </svg>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+
+            {# ── Fila expandible: Permisos ──────────────── #}
+            <tr id="perms-{{ user.id }}" class="hidden">
+              <td colspan="6" class="bg-sand-50 px-6 py-5 border-b border-sand-200">
+                <form method="POST"
+                      action="{{ url_for('auth.user_update_permissions', user_id=user.id) }}">
+                  <h4 class="font-heading text-navy-900 text-base mb-4">
+                    Permisos de {{ user.nombre }}
+                    <span class="text-sm font-body text-stone-400 ml-2">
+                      ({{ role_labels.get(user.role, user.role) }})
+                    </span>
+                  </h4>
+
+                  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
+                    {% for module in all_modules %}
+                      <div class="flex items-center gap-3">
+                        <label class="text-sm text-stone-700 min-w-[140px]">
+                          {{ module_labels.get(module, module) }}
+                        </label>
+                        <select name="perm_{{ module }}"
+                                class="text-sm px-3 py-1.5 rounded-lg border border-sand-200
+                                       bg-white text-stone-700 focus:outline-none
+                                       focus:ring-1 focus:ring-teal/30">
+                          <option value="0"
+                                  {% if user.get_permission_level(module) == 0 %}selected{% endif %}>
+                            Sin Acceso
+                          </option>
+                          <option value="1"
+                                  {% if user.get_permission_level(module) == 1 %}selected{% endif %}>
+                            Solo Lectura
+                          </option>
+                          <option value="2"
+                                  {% if user.get_permission_level(module) == 2 %}selected{% endif %}>
+                            Lectura / Escritura
+                          </option>
+                        </select>
+                      </div>
+                    {% endfor %}
+                  </div>
+
+                  <div class="flex items-center gap-3">
+                    <button type="submit"
+                            class="px-5 py-2 bg-teal hover:bg-teal-dark text-white
+                                   text-sm font-semibold rounded-lg transition-all">
+                      Guardar Permisos
+                    </button>
+                    <button type="button" onclick="togglePerms({{ user.id }})"
+                            class="px-5 py-2 text-sm text-stone-500 hover:text-stone-700
+                                   transition-colors">
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {# Empty state #}
+    {% if not users %}
+      <div class="py-16 text-center">
+        <svg class="w-12 h-12 text-stone-300 mx-auto mb-3" fill="none"
+             stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0
+                   004.121-.952 4.125 4.125 0 00-7.533-2.493M15
+                   19.128v-.003c0-1.113-.285-2.16-.786-3.07M15
+                   19.128v.106A12.318 12.318 0 018.624 21c-2.331
+                   0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375
+                   0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75
+                   0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625
+                   0 11-5.25 0 2.625 2.625 0 015.25 0z"/>
+        </svg>
+        <p class="text-stone-400 font-medium">No hay usuarios registrados.</p>
+        <p class="text-stone-400 text-sm mt-1">
+          Haga clic en "Nuevo Usuario" para crear el primero.
+        </p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/rut_val.js') }}"></script>
+<script>
+    /**
+     * Muestra/oculta la sección de permisos de un usuario.
+     */
+    function togglePerms(userId) {
+        var row = document.getElementById('perms-' + userId);
+        if (row) {
+            row.classList.toggle('hidden');
+        }
+    }
+</script>
+{% endblock %}

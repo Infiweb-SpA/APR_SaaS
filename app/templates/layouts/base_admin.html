@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Panel Administrativo – APR{% endblock %}</title>
+
+  {# ── Fuentes ─────────────────────────────────────────── #}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+
+  {# ── Tailwind CSS CDN (desarrollo) ───────────────────── #}
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: {
+              50: '#eef5fb', 100: '#d5e6f5', 200: '#afccec',
+              300: '#7dacde', 400: '#4d89ca', 500: '#2e6bb0',
+              600: '#215494', 700: '#1c4478', 800: '#1a3b64',
+              900: '#0c2d48', 950: '#071e30',
+            },
+            teal: {
+              DEFAULT: '#0d9488', light: '#2dd4bf', dark: '#0f766e',
+              50: '#f0fdfa', 100: '#ccfbf1',
+            },
+            sand: { 50: '#faf9f7', 100: '#f5f3f0', 200: '#e8e4de' },
+          },
+          fontFamily: {
+            heading: ['"DM Serif Display"', 'serif'],
+            body:    ['"Lora"', 'serif'],
+            mono:    ['"DM Mono"', 'monospace'],
+          },
+        },
+      },
+    }
+  </script>
+
+  {# ── CSS custom ──────────────────────────────────────── #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/input.css') }}">
+
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body class="bg-sand-50 text-stone-900 font-body antialiased">
+
+  <div class="flex min-h-screen">
+
+    {# ═══════════════════════════════════════════════════════
+       SIDEBAR (Desktop: fija | Mobile: overlay)
+       ═══════════════════════════════════════════════════════ #}
+
+    {# Overlay para mobile #}
+    <div id="sidebarOverlay"
+         class="fixed inset-0 bg-black/50 z-40 lg:hidden hidden"
+         onclick="closeSidebar()"></div>
+
+    {# Sidebar #}
+    <aside id="sidebar"
+           class="fixed top-0 left-0 bottom-0 w-64 bg-navy-950 z-50
+                  transform -translate-x-full lg:translate-x-0
+                  transition-transform duration-300 ease-in-out
+                  flex flex-col overflow-y-auto">
+
+      {% include 'components/admin_sidebar.html' %}
+
+    </aside>
+
+    {# ═══════════════════════════════════════════════════════
+       CONTENIDO PRINCIPAL
+       ═══════════════════════════════════════════════════════ #}
+
+    <div class="flex-1 lg:ml-64 flex flex-col min-h-screen">
+
+      {# ── Top bar ────────────────────────────────────────── #}
+      <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md
+                     border-b border-sand-200 px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+
+          {# Izquierda: hamburger + breadcrumb #}
+          <div class="flex items-center gap-3">
+            <button onclick="openSidebar()"
+                    class="lg:hidden p-2 -ml-2 rounded-lg text-stone-600
+                           hover:bg-sand-100 transition-colors"
+                    aria-label="Abrir menú">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                   stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
+              </svg>
+            </button>
+            <h2 class="text-sm font-heading text-navy-900 hidden sm:block">
+              Panel Administrativo
+            </h2>
+          </div>
+
+          {# Derecha: usuario + logout #}
+          <div class="flex items-center gap-4">
+            {% if current_user.is_authenticated %}
+              <div class="text-right hidden sm:block">
+                <p class="text-sm font-medium text-navy-900">
+                  {{ current_user.nombre }}
+                </p>
+                <p class="text-xs text-stone-400">
+                  {{ current_user.rut }}
+                </p>
+              </div>
+              <div class="w-8 h-8 rounded-full bg-navy-100 flex items-center
+                          justify-center text-xs font-heading text-navy-600">
+                {{ current_user.nombre[0] }}{{ current_user.nombre.split(' ')[1][0] if ' ' in current_user.nombre else '' }}
+              </div>
+              <a href="{{ url_for('auth.logout') }}"
+                 class="p-2 rounded-lg text-stone-400 hover:text-red-500
+                        hover:bg-red-50 transition-colors"
+                 title="Cerrar sesión">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                     stroke-width="1.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25
+                           2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5
+                           21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0
+                           0l-3-3m3 3H9"/>
+                </svg>
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      </header>
+
+      {# ── Contenido ──────────────────────────────────────── #}
+      <main class="flex-1 p-4 sm:p-6 lg:p-8">
+        {% block content %}{% endblock %}
+      </main>
+
+      {# ── Footer admin ───────────────────────────────────── #}
+      <footer class="px-4 sm:px-6 lg:px-8 py-4 border-t border-sand-200">
+        <p class="text-xs text-stone-400 text-center">
+          APR SaaS &middot; Sistema de Trazabilidad y Cumplimiento Normativo &middot;
+          Ley 20.998
+        </p>
+      </footer>
+    </div>
+  </div>
+
+  {# ── JavaScript ──────────────────────────────────────── #}
+  <script>
+    /* ── Sidebar toggle (mobile) ─────────────────────────── */
+    function openSidebar() {
+      document.getElementById('sidebar').classList.remove('-translate-x-full');
+      document.getElementById('sidebarOverlay').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.add('-translate-x-full');
+      document.getElementById('sidebarOverlay').classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+
+    /* Cerrar sidebar con tecla Escape */
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeSidebar();
+    });
+  </script>
+
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

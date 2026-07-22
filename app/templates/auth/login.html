@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar Sesión – MI APR</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+        rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: {
+              50: '#eef5fb', 100: '#d5e6f5', 200: '#afccec',
+              300: '#7dacde', 400: '#4d89ca', 500: '#2e6bb0',
+              600: '#215494', 700: '#1c4478', 800: '#1a3b64',
+              900: '#0c2d48', 950: '#071e30',
+            },
+            teal: {
+              DEFAULT: '#0d9488', light: '#2dd4bf', dark: '#0f766e',
+              50: '#f0fdfa', 100: '#ccfbf1',
+            },
+            sand: { 50: '#faf9f7', 100: '#f5f3f0', 200: '#e8e4de' },
+          },
+          fontFamily: {
+            heading: ['"DM Serif Display"', 'serif'],
+            body:    ['"Lora"', 'serif'],
+          },
+        },
+      },
+    }
+  </script>
+
+  <style>
+    @keyframes fadeUp  { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes floatSlow { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-10px); } }
+    .anim-fade-up { animation: fadeUp 0.6s ease-out forwards; }
+    .anim-float   { animation: floatSlow 6s ease-in-out infinite; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Lora', serif; }
+    h1, h2, h3, h4, h5, h6 { font-family: 'DM Serif Display', serif; }
+  </style>
+</head>
+
+<body class="bg-sand-50 text-stone-900 antialiased">
+
+  <div class="min-h-screen flex">
+
+    {# ═══════════════════════════════════════════════════
+       PANEL IZQUIERDO – Branding (solo desktop)
+       ═══════════════════════════════════════════════════ #}
+    <div class="hidden lg:flex lg:w-5/12 relative overflow-hidden">
+      <div class="absolute inset-0 bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800"></div>
+      <div class="absolute top-20 left-10 w-48 h-48 rounded-full bg-teal/[0.08] blur-2xl anim-float"></div>
+      <div class="absolute bottom-32 right-8 w-36 h-36 rounded-full bg-teal/[0.06] blur-2xl anim-float" style="animation-delay:2s"></div>
+
+      <div class="relative z-10 flex flex-col justify-center px-12 xl:px-16">
+        <a href="/" class="flex items-center gap-3 mb-10">
+          <div class="w-12 h-12 rounded-xl bg-teal flex items-center justify-center shadow-lg shadow-teal/20">
+            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+            </svg>
+          </div>
+          <div>
+            <span class="block text-xl font-heading text-white">APR</span>
+            <span class="text-xs text-navy-300">Agua Potable Rural</span>
+          </div>
+        </a>
+
+        <h1 class="text-3xl xl:text-4xl font-heading text-white leading-tight mb-4">
+          Acceda a su<br>
+          <span class="text-teal-light">portal personal</span>
+        </h1>
+        <p class="text-navy-200 leading-relaxed max-w-sm mb-8">
+          Consulte su estado de cuenta, historial de consumo, descargue
+          boletas y realice pagos en línea.
+        </p>
+
+        <ul class="space-y-3 text-sm text-navy-200">
+          <li class="flex items-center gap-3">
+            <div class="w-6 h-6 rounded-md bg-teal/20 flex items-center justify-center shrink-0">
+              <svg class="w-3.5 h-3.5 text-teal-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            Estado de cuenta en tiempo real
+          </li>
+          <li class="flex items-center gap-3">
+            <div class="w-6 h-6 rounded-md bg-teal/20 flex items-center justify-center shrink-0">
+              <svg class="w-3.5 h-3.5 text-teal-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+              </svg>
+            </div>
+            Historial de consumo en m³
+          </li>
+          <li class="flex items-center gap-3">
+            <div class="w-6 h-6 rounded-md bg-teal/20 flex items-center justify-center shrink-0">
+              <svg class="w-3.5 h-3.5 text-teal-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+            </div>
+            Descarga de boletas en PDF
+          </li>
+          <li class="flex items-center gap-3">
+            <div class="w-6 h-6 rounded-md bg-teal/20 flex items-center justify-center shrink-0">
+              <svg class="w-3.5 h-3.5 text-teal-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+              </svg>
+            </div>
+            Pagos en línea
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    {# ═══════════════════════════════════════════════════
+       PANEL DERECHO
+       ═══════════════════════════════════════════════════ #}
+    <div class="w-full lg:w-7/12 flex items-center justify-center px-4 py-12
+                bg-sand-50 min-h-screen">
+      <div class="w-full max-w-md anim-fade-up">
+
+        {# ── Volver al sitio ──────────────────────────── #}
+        <a href="/"
+           class="inline-flex items-center gap-2 text-sm text-stone-400
+                  hover:text-navy-900 transition-colors mb-8">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+          </svg>
+          Volver al sitio público
+        </a>
+
+        {# ── Logo (mobile) ───────────────────────────── #}
+        <div class="lg:hidden flex items-center gap-3 mb-8">
+          <div class="w-10 h-10 rounded-xl bg-navy-900 flex items-center justify-center">
+            <svg class="w-5 h-5 text-teal" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+            </svg>
+          </div>
+          <span class="text-lg font-heading text-navy-900">MI APR</span>
+        </div>
+
+        {# ═══════════════════════════════════════════════
+           BLOQUE CONDICIONAL: sesión activa vs login
+           ═══════════════════════════════════════════════ #}
+
+        {% if session_active %}
+
+          {# ── SESIÓN YA ACTIVA ────────────────────────── #}
+          <div class="text-center mb-6">
+            <div class="w-16 h-16 rounded-2xl bg-teal/10 border border-teal/20
+                        flex items-center justify-center mx-auto mb-4">
+              <svg class="w-8 h-8 text-teal" fill="none" stroke="currentColor"
+                   stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598
+                         6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623
+                         5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h
+                         -.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+              </svg>
+            </div>
+            <h2 class="text-2xl lg:text-3xl font-heading text-navy-900 mb-2">
+              Sesión Activa
+            </h2>
+            <p class="text-stone-500">
+              Ya tiene una sesión iniciada.
+            </p>
+          </div>
+
+          {# ── Info del usuario ───────────────────────── #}
+          <div class="bg-white rounded-2xl border border-sand-200 p-6 mb-6">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-full bg-navy-100 flex items-center
+                          justify-center text-lg font-heading text-navy-600 shrink-0">
+                {{ user.nombre[0] }}{{ user.nombre.split(' ')[1][0] if ' ' in user.nombre else '' }}
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="font-heading text-navy-900 text-lg truncate">
+                  {{ user.nombre }}
+                </p>
+                <p class="text-sm text-stone-500 font-mono">
+                  {{ user.rut }}
+                </p>
+                <p class="text-xs text-teal font-semibold mt-0.5 capitalize">
+                  {{ user.role }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {# ── Botones de acción ──────────────────────── #}
+          <div class="space-y-3">
+
+            {# Ir al panel admin (solo si tiene permisos) #}
+            {% if user.has_permission('auth', 2) %}
+              <a href="/auth/users"
+                 class="flex items-center justify-center gap-2 w-full py-3.5
+                        bg-navy-900 hover:bg-navy-800 text-white font-semibold
+                        rounded-xl transition-all duration-200 hover:shadow-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"
+                     viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5
+                           6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0
+                           01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25
+                           a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25
+                           2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5
+                           6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25
+                           6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0
+                           01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18
+                           a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118
+                           20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/>
+                </svg>
+                Ir al Panel de Administración
+              </a>
+            {% endif %}
+
+            {# Ir al inicio #}
+            <a href="/"
+               class="flex items-center justify-center gap-2 w-full py-3.5
+                      border border-sand-200 text-navy-900 font-semibold
+                      rounded-xl hover:bg-sand-100 transition-all duration-200">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"
+                   viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75
+                         12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v
+                         -4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125
+                         .504 1.125 1.125V21h4.125c.621 0 1.125-.504
+                         1.125-1.125V9.75M8.25 21h8.25"/>
+              </svg>
+              Ir al Sitio Público
+            </a>
+
+            {# Cerrar sesión y entrar con otro usuario #}
+            <div class="relative my-4">
+              <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-sand-200"></div>
+              </div>
+              <div class="relative flex justify-center">
+                <span class="bg-sand-50 px-3 text-xs text-stone-400">o</span>
+              </div>
+            </div>
+
+            <a href="/auth/logout"
+               class="flex items-center justify-center gap-2 w-full py-3.5
+                      bg-red-50 text-red-600 font-semibold rounded-xl
+                      border border-red-200 hover:bg-red-100 transition-all duration-200">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"
+                   viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0
+                         00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0
+                         002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/>
+              </svg>
+              Cerrar Sesión e Iniciar con Otro Usuario
+            </a>
+          </div>
+
+        {% else %}
+
+          {# ── FORMULARIO DE LOGIN ────────────────────── #}
+          <h2 class="text-2xl lg:text-3xl font-heading text-navy-900 mb-2">
+            Iniciar Sesión
+          </h2>
+          <p class="text-stone-500 mb-8">
+            Ingrese su RUT y contraseña para acceder al portal.
+          </p>
+
+          {# Flash messages #}
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, message in messages %}
+                <div class="mb-5 p-4 rounded-xl text-sm font-medium
+                            {% if category == 'success' %}
+                              bg-teal/10 text-teal-dark border border-teal/20
+                            {% elif category == 'warning' %}
+                              bg-amber-50 text-amber-700 border border-amber-200
+                            {% else %}
+                              bg-red-50 text-red-700 border border-red-200
+                            {% endif %}">
+                  {{ message }}
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+
+          <form method="POST" action="/auth/login" class="space-y-5">
+
+            {# RUT #}
+            <div>
+              <label for="rut" class="block text-sm font-semibold text-navy-900 mb-2">RUT</label>
+              <div class="relative">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z"/>
+                  </svg>
+                </span>
+                <input type="text" id="rut" name="rut"
+                       class="rut-input w-full pl-12 pr-4 py-3 rounded-xl
+                              border border-sand-200 bg-white text-stone-900
+                              placeholder-stone-400
+                              focus:outline-none focus:ring-2 focus:ring-teal/40
+                              focus:border-teal transition-all text-lg tracking-wide"
+                       value="{{ rut if rut else '' }}"
+                       required autofocus>
+              </div>
+            </div>
+
+            {# Contraseña #}
+            <div>
+              <label for="password" class="block text-sm font-semibold text-navy-900 mb-2">Contraseña</label>
+              <div class="relative">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+                  </svg>
+                </span>
+                <input type="password" id="password" name="password"
+                       class="w-full pl-12 pr-12 py-3 rounded-xl
+                              border border-sand-200 bg-white text-stone-900
+                              placeholder-stone-400
+                              focus:outline-none focus:ring-2 focus:ring-teal/40
+                              focus:border-teal transition-all"
+                       placeholder="Ingrese su contraseña"
+                       required>
+                <button type="button" id="togglePassword"
+                        class="absolute right-4 top-1/2 -translate-y-1/2
+                               text-stone-400 hover:text-stone-600 transition-colors"
+                        aria-label="Mostrar contraseña">
+                  <svg id="eyeOpen" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  </svg>
+                  <svg id="eyeClosed" class="w-5 h-5 hidden" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {# Enlace recuperar #}
+            <div class="text-right">
+              <a href="/auth/recover"
+                 class="text-sm text-teal hover:text-teal-dark transition-colors">
+                ¿Olvidó su contraseña?
+              </a>
+            </div>
+
+            {# Submit #}
+            <button type="submit"
+                    class="w-full py-3.5 bg-navy-900 hover:bg-navy-800 text-white
+                           font-semibold rounded-xl transition-all duration-200
+                           hover:shadow-lg text-base">
+              Ingresar
+            </button>
+          </form>
+
+        {% endif %}
+
+        {# ── Footer ──────────────────────────────────── #}
+        <p class="mt-12 text-center text-xs text-stone-400">
+          APR SaaS &middot; Sistema de Trazabilidad y Cumplimiento Normativo
+        </p>
+      </div>
+    </div>
+  </div>
+
+  {# ── Scripts ──────────────────────────────────────────── #}
+  <script src="{{ url_for('static', filename='js/rut_val.js') }}"></script>
+  <script>
+    var toggleBtn = document.getElementById('togglePassword');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', function () {
+        var pwd = document.getElementById('password');
+        var eyeOpen = document.getElementById('eyeOpen');
+        var eyeClosed = document.getElementById('eyeClosed');
+        if (pwd.type === 'password') {
+          pwd.type = 'text';
+          eyeOpen.classList.add('hidden');
+          eyeClosed.classList.remove('hidden');
+        } else {
+          pwd.type = 'password';
+          eyeOpen.classList.remove('hidden');
+          eyeClosed.classList.add('hidden');
+        }
+      });
+    }
+  </script>
+
+</body>
+</html>

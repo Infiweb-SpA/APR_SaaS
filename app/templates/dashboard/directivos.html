@@ -1,0 +1,149 @@
+{% extends 'layouts/base_public.html' %}
+
+{% block title %}Directivos – APR{% endblock %}
+
+{% block content %}
+
+{# ── Hero interno ───────────────────────────────────────── #}
+<section class="relative pt-20 overflow-hidden">
+  <div class="absolute inset-0 bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800"></div>
+  <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+    <h1 class="text-4xl md:text-5xl font-heading text-white will-animate anim-fade-up">
+      Directivos
+    </h1>
+    <p class="mt-4 text-lg text-navy-200 max-w-2xl will-animate anim-fade-up stagger-1">
+      Conozca al equipo directivo que administra nuestro comité de agua potable rural.
+    </p>
+    <nav class="mt-6 flex items-center gap-2 text-sm text-navy-400">
+      <a href="{{ url_for('dashboard.index') }}" class="hover:text-white transition-colors">Inicio</a>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+      </svg>
+      <span class="text-white">Directivos</span>
+    </nav>
+  </div>
+  <svg class="absolute bottom-0 left-0 w-full" viewBox="0 0 1440 60"
+       fill="none" preserveAspectRatio="none">
+    <path d="M0,30 C360,60 720,0 1080,30 C1260,45 1380,15 1440,30
+             L1440,60 L0,60 Z" fill="#faf9f7"/>
+  </svg>
+</section>
+
+{# ── Organigrama visual ─────────────────────────────────── #}
+<section class="py-20">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    <h2 class="text-3xl font-heading text-navy-900 mb-12 text-center">
+      Estructura Organizacional
+    </h2>
+
+    {# Nivel 1: Presidente #}
+    <div class="flex justify-center mb-6">
+      {% set presidente = ('Juan Pérez Soto', 'Presidente') %}
+      <div class="bg-white rounded-2xl p-6 border-2 border-teal/30 shadow-lg
+                  shadow-teal/5 text-center w-64 will-animate anim-fade-up">
+        <div class="w-16 h-16 rounded-full bg-navy-100 mx-auto mb-3
+                    flex items-center justify-center">
+          <span class="text-xl font-heading text-navy-600">JP</span>
+        </div>
+        <h3 class="font-heading text-lg text-navy-900">{{ presidente[0] }}</h3>
+        <p class="text-sm text-teal font-semibold mt-1">{{ presidente[1] }}</p>
+      </div>
+    </div>
+
+    {# Línea conectora #}
+    <div class="flex justify-center mb-6">
+      <div class="w-px h-8 bg-navy-200"></div>
+    </div>
+
+    {# Nivel 2: Vicepresidente #}
+    <div class="flex justify-center mb-6">
+      <div class="bg-white rounded-2xl p-6 border border-sand-200 text-center
+                  w-64 will-animate anim-fade-up stagger-1">
+        <div class="w-14 h-14 rounded-full bg-navy-50 mx-auto mb-3
+                    flex items-center justify-center">
+          <span class="text-lg font-heading text-navy-500">MR</span>
+        </div>
+        <h3 class="font-heading text-lg text-navy-900">María Rodríguez Vega</h3>
+        <p class="text-sm text-stone-500 mt-1">Vicepresidenta</p>
+      </div>
+    </div>
+
+    {# Línea conectora #}
+    <div class="flex justify-center mb-6">
+      <div class="w-px h-8 bg-navy-200"></div>
+    </div>
+
+    {# Nivel 3: Secretario, Tesorero #}
+    <div class="flex justify-center mb-6">
+      <div class="grid sm:grid-cols-2 gap-6 max-w-xl">
+        <div class="bg-white rounded-2xl p-5 border border-sand-200 text-center
+                    will-animate anim-fade-up stagger-2">
+          <div class="w-12 h-12 rounded-full bg-navy-50 mx-auto mb-3
+                      flex items-center justify-center">
+            <span class="text-base font-heading text-navy-500">CA</span>
+          </div>
+          <h3 class="font-heading text-base text-navy-900">Carlos Arriagada M.</h3>
+          <p class="text-sm text-stone-500 mt-1">Secretario</p>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-sand-200 text-center
+                    will-animate anim-fade-up stagger-3">
+          <div class="w-12 h-12 rounded-full bg-navy-50 mx-auto mb-3
+                      flex items-center justify-center">
+            <span class="text-base font-heading text-navy-500">AF</span>
+          </div>
+          <h3 class="font-heading text-base text-navy-900">Ana Fuentes Lagos</h3>
+          <p class="text-sm text-stone-500 mt-1">Tesorera</p>
+        </div>
+      </div>
+    </div>
+
+    {# Línea conectora #}
+    <div class="flex justify-center mb-6">
+      <div class="w-px h-8 bg-navy-200"></div>
+    </div>
+
+    {# Nivel 4: Directores (Vocales) #}
+    <div class="flex justify-center">
+      <div class="grid sm:grid-cols-3 gap-6 max-w-3xl">
+        {% set vocales = [
+          ('Pedro Muñoz R.', '1er Vocal'),
+          ('Laura Soto A.',  '2da Vocal'),
+          ('Roberto Díaz P.','3er Vocal'),
+        ] %}
+        {% for nombre, cargo in vocales %}
+          <div class="bg-white rounded-xl p-4 border border-sand-200 text-center
+                      will-animate anim-fade-up stagger-{{ loop.index + 3 }}">
+            <div class="w-10 h-10 rounded-full bg-sand-100 mx-auto mb-2
+                        flex items-center justify-center">
+              <span class="text-sm font-heading text-stone-500">
+                {{ nombre[0] }}{{ nombre.split(' ')[1][0] if ' ' in nombre else '' }}
+              </span>
+            </div>
+            <h4 class="font-heading text-sm text-navy-900">{{ nombre }}</h4>
+            <p class="text-xs text-stone-500 mt-1">{{ cargo }}</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ── Información adicional ──────────────────────────────── #}
+<section class="py-16 bg-white border-t border-sand-200">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 text-center">
+    <h2 class="text-2xl font-heading text-navy-900 mb-4">
+      Período de Gestión
+    </h2>
+    <p class="text-stone-500 leading-relaxed">
+      La directiva actual fue elegida en asamblea general ordinaria de socios
+      y ejerce sus funciones por un período de tres años, conforme a lo
+      establecido en la Ley 20.998 y el estatuto interno del comité.
+    </p>
+    <p class="mt-4 text-sm text-stone-400">
+      La próxima elección de directiva está programada para el año 2026.
+    </p>
+  </div>
+</section>
+
+{% endblock %}

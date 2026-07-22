@@ -1,0 +1,277 @@
+{% extends 'layouts/base_public.html' %}
+
+{% block title %}MI APR – Mi Cuenta{% endblock %}
+
+{% block content %}
+
+{# ── Header socio ──────────────────────────────────────── #}
+<section class="relative pt-20 overflow-hidden">
+  <div class="absolute inset-0 bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800"></div>
+  <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+    <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+
+      <div>
+        <span class="inline-block px-3 py-1 mb-3 text-xs font-semibold tracking-widest
+                     uppercase text-teal-light bg-teal/10 border border-teal/20 rounded-full">
+          Portal del Socio
+        </span>
+        <h1 class="text-3xl md:text-4xl font-heading text-white">
+          Hola, {{ socio.nombre.split(' ')[0] }}
+        </h1>
+        <p class="text-navy-200 mt-1 font-mono text-sm">{{ socio.rut }}</p>
+      </div>
+
+      {# Badge de estado #}
+      <div class="flex items-center gap-2">
+        {% if socio.saldo_pendiente > 0 %}
+          <span class="inline-flex items-center gap-1.5 px-4 py-2 text-sm
+                       font-semibold rounded-full bg-red-500/20 text-red-300
+                       border border-red-500/30">
+            <span class="w-2 h-2 rounded-full bg-red-400"></span>
+            Saldo pendiente: ${{ "{:,.0f}".format(socio.saldo_pendiente) }}
+          </span>
+        {% else %}
+          <span class="inline-flex items-center gap-1.5 px-4 py-2 text-sm
+                       font-semibold rounded-full bg-teal/20 text-teal-light
+                       border border-teal/30">
+            <span class="w-2 h-2 rounded-full bg-teal-light"></span>
+            Al día
+          </span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <svg class="absolute bottom-0 left-0 w-full" viewBox="0 0 1440 60"
+       fill="none" preserveAspectRatio="none">
+    <path d="M0,30 C360,60 720,0 1080,30 C1260,45 1380,15 1440,30
+             L1440,60 L0,60 Z" fill="#faf9f7"/>
+  </svg>
+</section>
+
+{# ════════════════════════════════════════════════════════
+   RESUMEN DE CUENTA
+   ════════════════════════════════════════════════════════ #}
+<section class="py-12 md:py-16">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+
+      {# Consumo actual #}
+      <div class="bg-white rounded-2xl border border-sand-200 p-5">
+        <span class="text-xs font-semibold text-stone-400 uppercase tracking-wider">
+          Consumo Actual
+        </span>
+        <p class="text-2xl font-heading text-navy-900 mt-2">
+          {% if socio.consumo_actual > 0 %}
+            {{ socio.consumo_actual }} <span class="text-base text-stone-400">m³</span>
+          {% else %}
+            <span class="text-stone-300">-- m³</span>
+          {% endif %}
+        </p>
+        <p class="text-xs text-stone-400 mt-1">Mes en curso</p>
+      </div>
+
+      {# Consumo promedio #}
+      <div class="bg-white rounded-2xl border border-sand-200 p-5">
+        <span class="text-xs font-semibold text-stone-400 uppercase tracking-wider">
+          Promedio (3 meses)
+        </span>
+        <p class="text-2xl font-heading text-navy-900 mt-2">
+          {% if socio.consumo_promedio > 0 %}
+            {{ socio.consumo_promedio }} <span class="text-base text-stone-400">m³</span>
+          {% else %}
+            <span class="text-stone-300">-- m³</span>
+          {% endif %}
+        </p>
+        <p class="text-xs text-stone-400 mt-1">Últimos 3 meses</p>
+      </div>
+
+      {# Saldo pendiente #}
+      <div class="bg-white rounded-2xl border border-sand-200 p-5">
+        <span class="text-xs font-semibold text-stone-400 uppercase tracking-wider">
+          Saldo Pendiente
+        </span>
+        {% if socio.saldo_pendiente > 0 %}
+          <p class="text-2xl font-heading text-red-600 mt-2">
+            ${{ "{:,.0f}".format(socio.saldo_pendiente) }}
+          </p>
+        {% else %}
+          <p class="text-2xl font-heading text-teal mt-2">$0</p>
+        {% endif %}
+        <p class="text-xs text-stone-400 mt-1">Deuda acumulada</p>
+      </div>
+
+      {# Medidor #}
+      <div class="bg-white rounded-2xl border border-sand-200 p-5">
+        <span class="text-xs font-semibold text-stone-400 uppercase tracking-wider">
+          N° Medidor
+        </span>
+        <p class="text-xl font-heading text-navy-900 mt-2">
+          {{ socio.medidor if socio.medidor != 'Sin datos aún' else '—' }}
+        </p>
+        <p class="text-xs text-stone-400 mt-1">
+          {{ socio.sector if socio.sector != 'Sin datos aún' else 'Sector no asignado' }}
+        </p>
+      </div>
+    </div>
+
+    {# ══════════════════════════════════════════════════════
+       HISTORIAL DE CONSUMO (Gráfico)
+       ══════════════════════════════════════════════════════ #}
+    <div class="bg-white rounded-2xl border border-sand-200 overflow-hidden mb-8">
+      <div class="px-5 py-4 border-b border-sand-200 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-navy-600" fill="none" stroke="currentColor"
+               stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0
+                     1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21
+                     6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75
+                     8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0
+                     1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125
+                     1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5
+                     4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3
+                     21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125
+                     1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/>
+          </svg>
+          <h3 class="font-heading text-navy-900">
+            Historial de Consumo
+          </h3>
+        </div>
+        <span class="text-xs text-stone-400">Últimos 12 meses</span>
+      </div>
+
+      {% if consumption_history %}
+        {# Gráfico se renderizará con Chart.js cuando haya datos reales #}
+        <div class="p-5">
+          <canvas id="consumptionChart" height="200"></canvas>
+        </div>
+      {% else %}
+        <div class="p-12 text-center">
+          <svg class="w-16 h-16 text-stone-200 mx-auto mb-3" fill="none"
+               stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0
+                     1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21
+                     6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75
+                     8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0
+                     1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125
+                     1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5
+                     4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3
+                     21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125
+                     1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/>
+          </svg>
+          <p class="text-stone-400 font-medium">
+            Sin datos de consumo registrados
+          </p>
+          <p class="text-sm text-stone-400 mt-1">
+            El historial aparecerá cuando se registren lecturas de su medidor.
+          </p>
+        </div>
+      {% endif %}
+    </div>
+
+    {# ══════════════════════════════════════════════════════
+       BOLETAS RECIENTES
+       ══════════════════════════════════════════════════════ #}
+    <div class="bg-white rounded-2xl border border-sand-200 overflow-hidden mb-8">
+      <div class="px-5 py-4 border-b border-sand-200 flex items-center gap-2">
+        <svg class="w-5 h-5 text-navy-600" fill="none" stroke="currentColor"
+             stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125
+                   1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m
+                   2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504
+                   1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25
+                   a9 9 0 00-9-9z"/>
+        </svg>
+        <h3 class="font-heading text-navy-900">Boletas Recientes</h3>
+      </div>
+
+      {% if recent_bills %}
+        <div class="divide-y divide-sand-200">
+          {% for bill in recent_bills %}
+            <div class="flex items-center justify-between px-5 py-4
+                        hover:bg-sand-50 transition-colors">
+              <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-lg bg-navy-50 flex items-center
+                            justify-center shrink-0">
+                  <svg class="w-5 h-5 text-navy-600" fill="none" stroke="currentColor"
+                       stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5
+                             A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0
+                             00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504
+                             -1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75
+                             c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-stone-800">
+                    {{ bill.period }}
+                  </p>
+                  <p class="text-xs text-stone-400 mt-0.5">
+                    {{ bill.consumption }} m³ &middot; Vence: {{ bill.due_date }}
+                  </p>
+                </div>
+              </div>
+              <div class="text-right">
+                <p class="text-sm font-semibold text-navy-900">
+                  ${{ "{:,.0f}".format(bill.amount) }}
+                </p>
+                {% if bill.status == 'paid' %}
+                  <span class="text-xs text-teal font-medium">Pagada</span>
+                {% elif bill.status == 'pending' %}
+                  <span class="text-xs text-amber-600 font-medium">Pendiente</span>
+                {% else %}
+                  <span class="text-xs text-red-500 font-medium">Vencida</span>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="p-12 text-center">
+          <svg class="w-16 h-16 text-stone-200 mx-auto mb-3" fill="none"
+               stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125
+                     1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m
+                     2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504
+                     1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25
+                     a9 9 0 00-9-9z"/>
+          </svg>
+          <p class="text-stone-400 font-medium">Sin boletas generadas</p>
+          <p class="text-sm text-stone-400 mt-1">
+            Las boletas aparecerán cuando se procese la facturación mensual.
+          </p>
+        </div>
+      {% endif %}
+    </div>
+
+    {# ══════════════════════════════════════════════════════
+       INFO DE CONTACTO RÁPIDA
+       ══════════════════════════════════════════════════════ #}
+    <div class="grid sm:grid-cols-2 gap-5">
+
+      <div class="bg-white rounded-2xl border border-sand-200 p-5">
+        <h4 class="font-heading text-navy-900 text-base mb-3">Mi Dirección</h4>
+        <p class="text-sm text-stone-500">
+          {{ socio.direccion if socio.direccion != 'Sin datos aún' else 'No registrada' }}
+        </p>
+        <p class="text-xs text-stone-400 mt-1">Sector: {{ socio.sector }}</p>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-sand-200 p-5">
+        <h4 class="font-heading text-navy-900 text-base mb-3">Emergencias 24 hrs</h4>
+        <a href="tel:+56912345678"
+           class="text-lg font-heading text-teal hover:text-teal-dark transition-colors">
+          +56 9 1234 5678
+        </a>
+        <p class="text-xs text-stone-400 mt-1">Cortes, fugas y averías</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

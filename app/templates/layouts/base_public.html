@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+        content="{% block meta_description %}Comité de Agua Potable Rural – Servicio de agua potable segura para nuestra comunidad rural.{% endblock %}">
+  <title>{% block title %}APR – Agua Potable Rural{% endblock %}</title>
+
+  {# ── Fuentes ─────────────────────────────────────────── #}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+        rel="stylesheet">
+
+  {# ── Tailwind CSS CDN (desarrollo) ───────────────────── #}
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: {
+              50:  '#eef5fb', 100: '#d5e6f5', 200: '#afccec',
+              300: '#7dacde', 400: '#4d89ca', 500: '#2e6bb0',
+              600: '#215494', 700: '#1c4478', 800: '#1a3b64',
+              900: '#0c2d48', 950: '#071e30',
+            },
+            teal: {
+              DEFAULT: '#0d9488', light: '#2dd4bf', dark: '#0f766e',
+              50: '#f0fdfa', 100: '#ccfbf1',
+            },
+            sand: { 50: '#faf9f7', 100: '#f5f3f0', 200: '#e8e4de' },
+          },
+          fontFamily: {
+            heading: ['"DM Serif Display"', 'serif'],
+            body:    ['"Lora"', 'serif'],
+          },
+        },
+      },
+    }
+  </script>
+
+  {# ── CSS custom ──────────────────────────────────────── #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/input.css') }}">
+
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body class="bg-sand-50 text-stone-900 font-body antialiased">
+
+  {# ── Navbar ──────────────────────────────────────────── #}
+  {% include 'components/public_navbar.html' %}
+
+  {# ── Contenido ───────────────────────────────────────── #}
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  {# ── Footer ──────────────────────────────────────────── #}
+  <footer class="bg-navy-950 text-white relative overflow-hidden">
+    {# Decoración #}
+    <div class="absolute top-0 right-0 w-72 h-72 rounded-full
+                bg-teal/5 -translate-y-1/2 translate-x-1/2"></div>
+
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+
+        {# Col 1 – Marca #}
+        <div>
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-teal flex items-center justify-center">
+              <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+              </svg>
+            </div>
+            <span class="text-lg font-heading">APR</span>
+          </div>
+          <p class="text-sm text-navy-300 leading-relaxed">
+            Comité de Agua Potable Rural comprometido con el servicio
+            de agua segura y sustentable para nuestra comunidad.
+          </p>
+        </div>
+
+        {# Col 2 – Enlaces rápidos #}
+        <div>
+          <h4 class="font-heading text-base mb-4 text-white">Navegación</h4>
+          <ul class="space-y-2 text-sm text-navy-300">
+            <li><a href="{{ url_for('dashboard.servicios') }}"
+                   class="hover:text-teal-light transition-colors">Servicios</a></li>
+            <li><a href="{{ url_for('dashboard.quienes_somos') }}"
+                   class="hover:text-teal-light transition-colors">Quiénes Somos</a></li>
+            <li><a href="{{ url_for('dashboard.obras') }}"
+                   class="hover:text-teal-light transition-colors">Obras</a></li>
+            <li><a href="{{ url_for('dashboard.info_util') }}"
+                   class="hover:text-teal-light transition-colors">Info Útil</a></li>
+            <li><a href="{{ url_for('dashboard.directivos') }}"
+                   class="hover:text-teal-light transition-colors">Directivos</a></li>
+            <li><a href="{{ url_for('dashboard.contacto') }}"
+                   class="hover:text-teal-light transition-colors">Contacto</a></li>
+          </ul>
+        </div>
+
+        {# Col 3 – Contacto #}
+        <div>
+          <h4 class="font-heading text-base mb-4 text-white">Contacto</h4>
+          <ul class="space-y-3 text-sm text-navy-300">
+            <li class="flex items-start gap-2">
+              <svg class="w-4 h-4 mt-0.5 text-teal shrink-0" fill="none" stroke="currentColor"
+                   stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+              Camino Rural s/n, Valle Esperanza
+            </li>
+            <li class="flex items-start gap-2">
+              <svg class="w-4 h-4 mt-0.5 text-teal shrink-0" fill="none" stroke="currentColor"
+                   stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+              </svg>
+              contacto@aprvalleesperanza.cl
+            </li>
+            <li class="flex items-start gap-2">
+              <svg class="w-4 h-4 mt-0.5 text-teal shrink-0" fill="none" stroke="currentColor"
+                   stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              Lun a Vie: 09:00 – 17:00 hrs
+            </li>
+          </ul>
+        </div>
+
+        {# Col 4 – Emergencia #}
+        <div>
+          <h4 class="font-heading text-base mb-4 text-white">Emergencias 24 hrs</h4>
+          <div class="bg-navy-900 border border-teal/20 rounded-xl p-4">
+            <p class="text-xs text-navy-400 uppercase tracking-wider mb-2">
+              Línea de emergencia
+            </p>
+            <a href="tel:+56912345678"
+               class="text-2xl font-heading text-teal-light hover:text-white transition-colors">
+              +56 9 1234 5678
+            </a>
+            <p class="text-xs text-navy-400 mt-2">
+              Cortes de agua, fugas y averías
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {# Barra inferior #}
+      <div class="mt-12 pt-8 border-t border-white/10
+                  flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-navy-400">
+        <p>&copy; 2024 Comité APR Valle Esperanza. Todos los derechos reservados.</p>
+        <p>Agua Potable Rural &middot; Ley 20.998</p>
+      </div>
+    </div>
+  </footer>
+
+  {# ── JavaScript ──────────────────────────────────────── #}
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+      /* ── Menú mobile ─────────────────────────────────── */
+      const btn   = document.getElementById('mobileMenuBtn');
+      const menu  = document.getElementById('mobileMenu');
+      const iconO = document.getElementById('iconOpen');
+      const iconC = document.getElementById('iconClose');
+
+      if (btn && menu) {
+        btn.addEventListener('click', () => {
+          const open = menu.classList.contains('hidden');
+          menu.classList.toggle('hidden');
+          iconO.classList.toggle('hidden');
+          iconC.classList.toggle('hidden');
+          btn.setAttribute('aria-expanded', open);
+        });
+      }
+
+      /* ── Navbar scroll (transparente → sólida) ───────── */
+      const nav = document.getElementById('mainNav');
+      if (nav) {
+        const onScroll = () => {
+          nav.classList.toggle('nav-scrolled', window.scrollY > 40);
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+      }
+
+      /* ── Intersection Observer – animaciones al scroll ─ */
+      const animated = document.querySelectorAll('.will-animate');
+      if (animated.length && 'IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.classList.remove('will-animate');
+              observer.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.12 });
+
+        animated.forEach(el => observer.observe(el));
+      }
+    });
+  </script>
+
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

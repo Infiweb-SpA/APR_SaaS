@@ -1,0 +1,201 @@
+{# ──────────────────────────────────────────────────────────
+   Navbar Pública – Componente parcial
+   Detecta sesión activa: muestra usuario/panel/logout
+   ────────────────────────────────────────────────────────── #}
+
+<nav id="mainNav"
+     class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-transparent">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-20">
+
+      {# ── Logo ──────────────────────────────────────── #}
+      <a href="{{ url_for('dashboard.index') }}"
+         class="flex items-center gap-3 group">
+        <div class="w-10 h-10 rounded-xl bg-teal flex items-center justify-center
+                    shadow-lg shadow-teal/20 group-hover:shadow-teal/40 transition-shadow">
+          <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+          </svg>
+        </div>
+        <div class="leading-tight">
+          <span class="block text-lg font-heading text-white
+                       group-hover:text-teal-light transition-colors">
+            APR
+          </span>
+          <span class="hidden sm:block text-[11px] text-navy-200 tracking-wide">
+            Agua Potable Rural
+          </span>
+        </div>
+      </a>
+
+      {# ── Navegación Desktop ────────────────────────── #}
+      <div class="hidden lg:flex items-center gap-1">
+        {% set nav_links = [
+          ('dashboard.index',         'Inicio'),
+          ('dashboard.servicios',     'Servicios'),
+          ('dashboard.quienes_somos', 'Quiénes Somos'),
+          ('dashboard.obras',         'Obras'),
+          ('dashboard.info_util',     'Info Útil'),
+          ('dashboard.directivos',    'Directivos'),
+          ('dashboard.contacto',      'Contacto'),
+        ] %}
+        {% for endpoint, label in nav_links %}
+          <a href="{{ url_for(endpoint) }}"
+             class="px-3 py-2 text-sm text-navy-100 hover:text-white
+                    rounded-lg hover:bg-white/10 transition-colors
+                    {% if request.endpoint == endpoint %}text-white bg-white/10{% endif %}">
+            {{ label }}
+          </a>
+        {% endfor %}
+      </div>
+
+      {# ── Zona derecha: sesión activa O botón MI APR ── #}
+      <div class="hidden lg:flex items-center gap-3">
+
+        {% if current_user.is_authenticated %}
+
+          {# ── Usuario autenticado ────────────────────── #}
+
+          {# Botón al panel (solo si tiene permisos admin) #}
+          {% if current_user.has_permission('auth', 2) %}
+            <a href="/auth/users"
+               class="inline-flex items-center gap-2 px-4 py-2 text-sm
+                      text-navy-100 hover:text-white rounded-lg
+                      hover:bg-white/10 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
+                   viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5
+                         6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0
+                         01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016
+                         13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0
+                         01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5
+                         6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25
+                         6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0
+                         01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18
+                         a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118
+                         20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/>
+              </svg>
+              Panel
+            </a>
+          {% endif %}
+
+          {# Avatar + nombre #}
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5">
+            <div class="w-7 h-7 rounded-full bg-teal/20 flex items-center
+                        justify-center text-xs font-heading text-teal-light">
+              {{ current_user.nombre[0] }}{{ current_user.nombre.split(' ')[1][0] if ' ' in current_user.nombre else '' }}
+            </div>
+            <span class="text-sm text-navy-100 hidden xl:inline">
+              {{ current_user.nombre.split(' ')[0] }}
+            </span>
+          </div>
+
+          {# Cerrar sesión #}
+          <a href="/auth/logout"
+             class="inline-flex items-center gap-1.5 px-3 py-2 text-sm
+                    text-navy-300 hover:text-white rounded-lg
+                    hover:bg-white/10 transition-colors"
+             title="Cerrar sesión">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
+                 viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0
+                       00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0
+                       002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/>
+            </svg>
+            Salir
+          </a>
+
+        {% else %}
+
+          {# ── Sin sesión: botón MI APR ───────────────── #}
+          <a href="/auth/login"
+             class="inline-flex items-center gap-2 px-5 py-2.5
+                    bg-teal hover:bg-teal-dark text-white text-sm font-semibold
+                    rounded-lg transition-all duration-200
+                    hover:shadow-lg hover:shadow-teal/25">
+            MI APR
+            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                 stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+            </svg>
+          </a>
+
+        {% endif %}
+      </div>
+
+      {# ── Botón Hamburguesa (Mobile) ────────────────── #}
+      <button id="mobileMenuBtn"
+              class="lg:hidden p-2 text-white rounded-lg hover:bg-white/10 transition"
+              aria-label="Abrir menú de navegación"
+              aria-expanded="false">
+        <svg id="iconOpen" class="w-6 h-6" fill="none" stroke="currentColor"
+             stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+        <svg id="iconClose" class="w-6 h-6 hidden" fill="none" stroke="currentColor"
+             stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  {# ── Menú Mobile ─────────────────────────────────────── #}
+  <div id="mobileMenu"
+       class="lg:hidden hidden bg-navy-950/95 backdrop-blur-md
+              border-t border-white/10">
+    <div class="max-w-7xl mx-auto px-4 py-4 space-y-1">
+      {% for endpoint, label in nav_links %}
+        <a href="{{ url_for(endpoint) }}"
+           class="block px-4 py-3 text-navy-100 hover:text-white
+                  hover:bg-white/5 rounded-lg transition-colors">
+          {{ label }}
+        </a>
+      {% endfor %}
+
+      <div class="pt-3 mt-2 border-t border-white/10 space-y-2">
+        {% if current_user.is_authenticated %}
+
+          {# Info usuario en mobile #}
+          <div class="flex items-center gap-3 px-4 py-3">
+            <div class="w-8 h-8 rounded-full bg-teal/20 flex items-center
+                        justify-center text-xs font-heading text-teal-light">
+              {{ current_user.nombre[0] }}{{ current_user.nombre.split(' ')[1][0] if ' ' in current_user.nombre else '' }}
+            </div>
+            <div>
+              <p class="text-sm text-white font-medium">{{ current_user.nombre }}</p>
+              <p class="text-xs text-navy-400">{{ current_user.rut }}</p>
+            </div>
+          </div>
+
+          {# Panel admin (si tiene permisos) #}
+          {% if current_user.has_permission('auth', 2) %}
+            <a href="/auth/users"
+               class="block text-center px-4 py-3 bg-teal text-white
+                      font-semibold rounded-lg hover:bg-teal-dark transition-colors">
+              Panel de Administración
+            </a>
+          {% endif %}
+
+          {# Cerrar sesión #}
+          <a href="/auth/logout"
+             class="block text-center px-4 py-3 text-red-300 hover:text-white
+                    hover:bg-red-500/20 rounded-lg transition-colors font-medium">
+            Cerrar Sesión
+          </a>
+
+        {% else %}
+
+          <a href="/auth/login"
+             class="block text-center px-4 py-3 bg-teal text-white
+                    font-semibold rounded-lg hover:bg-teal-dark transition-colors">
+            MI APR &rarr; Acceder
+          </a>
+
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</nav>

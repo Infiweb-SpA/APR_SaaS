@@ -1,0 +1,81 @@
+/* ================================================================
+ * APR_SaaS – Estilos Custom
+ * ================================================================
+ * DESARROLLO: Tailwind CSS se carga vía CDN en base_public.html.
+ * PRODUCCIÓN: Compilar con:
+ *   npx tailwindcss -i ./app/static/css/input.css \
+ *                   -o ./app/static/dist/output.css --minify
+ * ================================================================ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Tipografía base ───────────────────────────────────────── */
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+    body {
+        font-family: 'Lora', serif;
+    }
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'DM Serif Display', serif;
+    }
+}
+
+/* ── Animaciones ───────────────────────────────────────────── */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(28px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes floatSlow {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50%      { transform: translateY(-12px) rotate(2deg); }
+}
+
+/* ── Utilidades de animación ──────────────────────────────── */
+@layer utilities {
+    .anim-fade-up  { animation: fadeUp  0.7s ease-out forwards; }
+    .anim-fade-in  { animation: fadeIn  0.6s ease-out forwards; }
+    .anim-slide-dn { animation: slideDown 0.35s ease-out forwards; }
+    .anim-float    { animation: floatSlow 6s ease-in-out infinite; }
+    .will-animate  { opacity: 0; }
+    .stagger-1 { animation-delay: 100ms; }
+    .stagger-2 { animation-delay: 200ms; }
+    .stagger-3 { animation-delay: 300ms; }
+    .stagger-4 { animation-delay: 400ms; }
+    .stagger-5 { animation-delay: 500ms; }
+}
+
+/* ── Navbar: efecto scroll ─────────────────────────────────── */
+.nav-scrolled {
+    background: rgba(7, 30, 48, 0.97) !important;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 1px 24px rgba(0, 0, 0, 0.18);
+}
+
+/* ── Grain overlay (textura sutil) ─────────────────────────── */
+.grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity: 0.035;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* ── Scrollbar personalizada ───────────────────────────────── */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #f5f3f0; }
+::-webkit-scrollbar-thumb { background: #0c2d48; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #1c4478; }
