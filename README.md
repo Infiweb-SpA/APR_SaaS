@@ -121,3 +121,87 @@ Para que este software pueda competir con 5SNAP y comercializarse legalmente a c
 ## 5. Normas de Suspensión de Servicio (Cortes por Deuda)
 *   **Plazos Legales de Aviso:** El sistema no puede emitir órdenes de corte de manera aleatoria. La ley estipula que el corte procede tras acumular 2 boletas impagas consecutivas.
 *   **Notificación Previa:** La boleta actual emitida debe indicar explícitamente en el cuerpo del documento si el socio se encuentra en "Aviso de Corte" indicando la fecha límite de pago antes de la suspensión física del servicio. El software debe validar que hayan transcurrido los días hábiles legales mínimos antes de incluir al socio en la ruta de corte.
+
+# estructura de carpetas y archivos
+```
+APR_SaaS/
+│
+├── config.py                 # Configuración por entorno (Development, Production, SQLite DB URL)
+├── app.py                    # Application Factory (Inicializa Flask, DB, Migraciones y Blueprints)
+├── wsgi.py                   # Punto de entrada para el servidor de producción (Gunicorn/Waitress)
+├── requirements.txt          # Dependencias de Python (Flask, SQLAlchemy, Pandas, openpyxl, etc.)
+├── .env.example              # Ejemplo de variables de entorno (Secret Key, credenciales API SII/OpenFactura)
+├── README.md                 # Documentación del proyecto
+│
+├── app/
+│   ├── __init__.py           # Inicialización de la aplicación Flask y extensiones
+│   │
+│   ├── models/               # Modelos de base de datos (SQLAlchemy ORM)
+│   │   ├── __init__.py
+│   │   ├── partner.py        # Socios/Clientes (RUT con verificador, Datos personales, Subsidios)
+│   │   ├── meter.py          # Medidores (Nº Serie, Marca, Coordenadas GPS, Estado) y Cambios de medidor
+│   │   ├── reading.py        # Lecturas mensuales de consumos
+│   │   ├── billing.py        # Boletas, Detalle de tarifas, Subsidios aplicados, Multas/Intereses
+│   │   ├── payment.py        # Registros de Caja, Transacciones POS y Comprobantes
+│   │   └── technical.py      # Macro-medidores, Registro de Cloro Residual/Presión, Eventos de Corte
+│   │
+│   ├── services/             # Lógica Core de Negocio y Dominio Legal
+│   │   ├── __init__.py
+│   │   ├── rut_validator.py  # Algoritmo de validación de RUT chileno (Módulo 1)
+│   │   ├── billing_engine.py # Motor de cálculo tarifario, sobreconsumo y tope subsidio <=15m³ (Módulo 3 & Ley 20.998)
+│   │   ├── sii_service.py    # Generación de XML y conexión API para Facturación Electrónica (DTE / SII)
+│   │   ├── siss_reports.py   # Generador de reportes legales (Continuidad, Cloro residual, Balance de Agua)
+│   │   └── export_service.py # Exportación de planillas Excel para la Municipalidad (Decreto Supremo Nº 171)
+│   │
+│   ├── blueprints/           # Controladores y Endpoints (Rutas HTTP y API)
+│   │   ├── __init__.py
+│   │   ├── main.py           # Dashboard principal e indicadores generales
+│   │   ├── partners.py       # CRUD Ficha Única del Socio y Medidores asociados (Módulo 1)
+│   │   ├── readings.py       # API y Vistas para la Toma de Lecturas en Terreno Mobile-First (Módulo 2)
+│   │   ├── billing.py        # Configuración global de tarifas y ejecutor del Cierre de Mes (Módulo 3)
+│   │   ├── pos.py            # Punto de Venta / Caja Presencial y Gestión de Morosidad (Módulo 4)
+│   │   └── reports.py        # Reportabilidad técnica, Balance de Agua y Fiscalización (Módulo 5)
+│   │
+│   ├── static/               # Archivos estáticos
+│   │   ├── css/
+│   │   │   └── input.css     # Archivo fuente de Tailwind CSS
+│   │   ├── js/
+│   │   │   ├── rut_val.js    # Validación de RUT chileno en el cliente
+│   │   │   ├── offline_sync.js # Manejo de LocalStorage, detección offline y envío batch
+│   │   │   ├── reading_val.js # Alertas en tiempo real por anomalías de consumo (>100% o menor)
+│   │   │   ├── pos_print.js  # Formateador de impresión para ticket térmico (58mm/80mm)
+│   │   │   └── charts.js     # Gráficos del Balance de Pérdidas de Agua (Chart.js)
+│   │   └── dist/             # Archivos CSS/JS compilados para producción
+│   │       └── output.css
+│   │
+│   └── templates/            # Plantillas HTML (Jinja2)
+│       ├── base.html         # Plantilla maestra (Layout general con Tailwind CSS)
+│       ├── components/       # Modales, Alertas y Navbar
+│       │   ├── navbar.html
+│       │   └── anomaly_modal.html
+│       ├── partners/         # Vistas Módulo 1
+│       │   ├── list.html
+│       │   ├── form.html
+│       │   └── meter_change.html
+│       ├── readings/         # Vistas Módulo 2 (Mobile-First)
+│       │   └── capture.html  # Interfaz optimizada con teclado numérico e inputs adaptados
+│       ├── billing/          # Vistas Módulo 3
+│       │   ├── config.html
+│       │   └── process.html
+│       ├── pos/              # Vistas Módulo 4
+│       │   ├── cashier.html  # Interfaz de cobranza presencial
+│       │   └── ticket_template.html # Plantilla de ticket para la boleta/comprobante
+│       └── reports/          # Vistas Módulo 5 y Cumplimiento Normativo
+│           ├── water_balance.html
+│           ├── municipal_subsidy.html
+│           └── siss_cloro.html
+│
+├── instance/                 # Base de datos local SQLite y archivos persistentes
+│   └── apr_database.sqlite
+│
+├── migrations/               # Control de versiones del esquema de base de datos (Flask-Migrate/Alembic)
+└── tests/                    # Pruebas unitarias e integración
+    ├── test_billing.py       # Tests del cálculo tarifario y tope de 15m³ de subsidio
+    ├── test_rut.py           # Unit tests de algoritmos DV del RUT
+    └── test_sii.py           # Tests del formateador DTE
+ ```
