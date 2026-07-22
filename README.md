@@ -79,3 +79,45 @@ Este documento define el alcance funcional detallado para el desarrollo modular 
 *   **Reportes de Caja Financieros:**
     *   Libro de Ingresos y Gastos mensual.
     *   Exportación directa a formato Excel (`.xlsx`) utilizando la librería `pandas` u `openpyxl` en Python.
+
+    # Requerimientos Legales y Cumplimiento Normativo para APR en Chile (Ley 20.998)
+
+Para que este software pueda competir con 5SNAP y comercializarse legalmente a comités o cooperativas de Servicios Sanitarios Rurales (SSR) en Chile, el sistema debe cumplir obligatoriamente con las siguientes directrices fiscalizadas por la SISS y la DSSR.
+
+---
+
+## 1. Estructura Tarifaria Homologada (DSSR)
+*   **Separación de Conceptos:** La base de datos y la visualización de la boleta deben separar estrictamente los ingresos por:
+    1.  Cargo Fijo Sanitario.
+    2.  Consumo de Agua Variable (Tramos normal y sobreconsumo).
+    3.  Aportes de Capital o Cuotas de Incorporación (si aplica).
+    4.  Intereses por mora de meses anteriores.
+*   **Restricción:** El sistema no puede aplicar cobros arbitrarios o conceptos comerciales que no estén previamente aprobados por la asamblea del comité y ratificados por el organismo regulador competente.
+
+---
+
+## 2. Gestión de Subsidios Estatales (Decreto Supremo Nº 171)
+*   **Cálculo e Informes de Cobro Municipal:** El estado subsidia el consumo de agua potable a familias vulnerables. El software debe generar de forma obligatoria un informe mensual consolidado en formato Excel estructurado por la municipalidad correspondiente.
+*   **Campos Requeridos en el Informe:** RUT del Beneficiario, Número de Decreto del Subsidio, Porcentaje Subsidiado, Consumo en $m^3$, Monto Pesos ($) Subsidiado cobrado al Municipio, y Monto Neto cobrado al Socio.
+*   **Validación de Tope:** El software debe bloquear estrictamente el cálculo de subsidio por sobre los 15 metros cúbicos mensuales por socio, según dicta la ley actual.
+
+---
+
+## 3. Integración con Facturación Electrónica (SII)
+*   **Documento Tributario Electrónico (DTE):** Las APR están obligadas a emitir Boletas Electrónicas y/o Facturas por los servicios sanitarios entregados.
+*   **Requerimiento Técnico backend:** El backend en Python debe estructurar los datos del cobro mensual en formato XML según el esquema del Servicio de Impuestos Internos (SII).
+*   **Estrategia de Desarrollo:** Implementar una integración vía API REST utilizando un proveedor de facturación intermedio (ej: OpenFactura, Haulmer, Bsale, u otro similar) o conexión directa mediante firmas digitales, garantizando el envío del documento y el retorno del timbre electrónico (PDF con código de barras bidimensional PDF417).
+
+---
+
+## 4. Exportación de Datos para Fiscalización (SISS)
+*   **Informes Técnicos del Servicio:** La Superintendencia de Servicios Sanitarios (SISS) requiere datos periódicos del comportamiento del APR. El sistema debe contar con consultas SQL listas para exportar los siguientes indicadores:
+    *   **Índice de Continuidad del Servicio:** Registro de horas/días sin suministro o por cortes de emergencia programados.
+    *   **Registro de Presiones y Cloro:** Formulario técnico donde el operario ingresa manualmente los niveles de cloro libre residual (PPM) medidos en las puntas de red, con alertas si bajan del límite legal (0.2 mg/L).
+    *   **Catastro de Pérdidas:** El reporte de Balance de Agua (Módulo 5 de funcionalidades) debe ser exportable en un formato estándar compatible con las planillas de rendición de cuentas de la DSSR.
+
+---
+
+## 5. Normas de Suspensión de Servicio (Cortes por Deuda)
+*   **Plazos Legales de Aviso:** El sistema no puede emitir órdenes de corte de manera aleatoria. La ley estipula que el corte procede tras acumular 2 boletas impagas consecutivas.
+*   **Notificación Previa:** La boleta actual emitida debe indicar explícitamente en el cuerpo del documento si el socio se encuentra en "Aviso de Corte" indicando la fecha límite de pago antes de la suspensión física del servicio. El software debe validar que hayan transcurrido los días hábiles legales mínimos antes de incluir al socio en la ruta de corte.
