@@ -1,207 +1,279 @@
 # APR_SaaS
-sistema de trazabilidad y gestión de apr
+Sistema de Trazabilidad, Gestión y Cumplimiento Normativo para APR / SSR (Agua Potable Rural)
 
-# Especificaciones Técnicas y Funcionalidades por Módulo (Stack: Flask, Python, JS, Tailwind, SQLite)
+## Especificaciones Técnicas y Desarrollo Modular por Fases
+**Stack:** Python (Flask), SQLite (SQLAlchemy), JavaScript (ES6+), Tailwind CSS.
 
-Este documento define el alcance funcional detallado para el desarrollo modular de la plataforma de gestión de Agua Potable Rural (APR).
-
----
-
-## MÓDULO 1: Gestión de Socios, Medidores y Conexiones (CRUD & Estado)
-*Objetivo: Administrar el catastro completo del comité.*
-
-*   **Ficha Única del Socio:**
-    *   Formulario de registro con validación de RUT chileno (algoritmo de dígito verificador en JS y Python).
-    *   Campos: ID correlativo, RUT, Nombre Completo, Dirección/Sector, Teléfono, Correo Electrónico, Fecha de Alta, Estado (Activo / Suspendido / En Corte).
-    *   Historial vinculante que muestre todas las propiedades o medidores a su nombre.
-*   **Catastro de Medidores:**
-    *   Campos: Número de Serie (Único), Marca, Diámetro (mm), Coordenadas GPS (Lat/Lng), Fecha de Instalación, Estado (Operativo / Defectuoso).
-    *   Relación de base de datos de 1 a muchos (Un socio puede tener más de un medidor, un medidor pertenece a un solo socio).
-*   **Gestión de Cambios de Medidor:**
-    *   Función interna para reemplazar un medidor dañado. Debe registrar la lectura final del medidor retirado y la lectura inicial (habitualmente 0) del nuevo medidor para evitar errores en el cálculo de consumo de ese mes.
+Para mantener una metodología de desarrollo limpia mediante **Vibecoding**, cada módulo está diseñado de forma atómica y acotada en pocos archivos dedicados por contexto.
 
 ---
 
-## MÓDULO 2: Toma de Lecturas en Terreno (Mobile-First & Offline-Ready)
-*Objetivo: Permitir al operario registrar los consumos mensuales en un smartphone de forma ágil.*
+## Matriz de Roles y Niveles de Permisos
 
-*   **Interfaz de Captura Optimizada:**
-    *   Diseño responsivo estricto con Tailwind CSS, botones grandes y teclado numérico forzado (`type="number" inputmode="numeric"`).
-    *   Buscador rápido por Nombre de Socio, Número de Medidor o Filtrado por Sector/Ruta de calle.
-*   **Validación de Consumo en Tiempo Real (JavaScript):**
-    *   Al ingresar la `Lectura Actual`, JS busca de forma asíncrona la `Lectura Anterior`.
-    *   Calcula: $Consumo = Lectura\ Actual - Lectura\ Anterior$.
-    *   **Regla de Alerta:** Si el consumo supera en un 100% el promedio de los últimos 3 meses del socio, o si la Lectura Actual es menor a la Anterior, el sistema bloquea el guardado y muestra un modal de advertencia: *"Consumo anómalo detectado. ¿Confirmar ingreso o verificar fuga?"*.
-*   **Sincronización Inteligente Offline (LocalStorage):**
-    *   Uso de JavaScript para detectar la pérdida de conexión (`navigator.onLine`).
-    *   Si no hay señal, las lecturas se guardan localmente en formato JSON dentro del navegador. Al recuperar internet, un botón de "Sincronizar" envía en lote (`POST`) los datos retenidos al backend de Flask.
+El sistema implementa un modelo de **Control de Acceso Basado en Roles (RBAC)** con niveles de permisos numéricos aplicables por módulo:
 
----
+*   **Nivel `0` (Sin acceso):** Sin lectura ni escritura. La ruta o recurso está bloqueado.
+*   **Nivel `1` (Solo lectura):** Puede visualizar consultas, estados de cuenta o reportes, pero no editar ni crear registros.
+*   **Nivel `2` (Lectura y Escritura):** Acceso total para crear, editar, procesar pagos, ejecutar cierres o modificar datos del módulo.
 
-## MÓDULO 3: Motor de Facturación y Subsidios (Lógica Core en Python)
-*Objetivo: Procesar mensualmente los consumos y aplicar la estructura tarifaria.*
-
-*   **Configuración Global de Tarifas:**
-    *   Panel de administración para definir parámetros del comité: Cargo Fijo ($), Valor por $m^3$ Base ($), Límite de Sobreconsumo ($m^3$), Valor por $m^3$ con Sobreconsumo ($), e Interés por Mora (%).
-*   **Algoritmo de Cálculo Mensual:**
-    *   Función en `billing.py` que recibe `Consumo_m3`.
-    *   Si $Consumo \le LimiteSobreconsumo$: $Total = Cargo\ Fijo + (Consumo \times Valor\ Base)$.
-    *   Si $Consumo > LimiteSobreconsumo$: $Total = Cargo\ Fijo + (Limite \times Valor\ Base) + ((Consumo - Limite) \times Valor\ Sobreconsumo)$.
-*   **Módulo de Subsidios Estatales:**
-    *   Campos en la ficha del socio: % de Subsidio (ej: 50% o 100%) y Tope de Subsidio en metros cúbicos (máximo legal de 15 $m^3$).
-    *   La lógica calcula el descuento: aplica el porcentaje asignado únicamente a los metros cúbicos consumidos que estén por debajo o igual al tope configurado. El descuento se resta del total de la boleta.
-*   **Motor de Cierre de Mes:**
-    *   Script que procesa en lote a todos los medidores activos, calcula sus cobros, genera el registro en la tabla `Boletas` y cambia el estado de la lectura del mes a "Facturada".
+### Perfiles de Usuario Predefinidos:
+1.  **Socio / Cliente:** 
+    *   `auth`: Level 2 (Acceso a su sesión).
+    *   `portal_socio`: Level 1 (Consulta estado de cuenta/boletas) / Level 2 (Realizar pagos online).
+    *   Demás módulos: Level 0.
+2.  **Operario de Terreno:**
+    *   `readings` (Lecturas): Level 2.
+    *   `partners` (Catastro): Level 1.
+    *   `reports` (Registros de Cloro/Presión): Level 2.
+    *   Demás módulos: Level 0.
+3.  **Secretaria / CaJa:**
+    *   `partners`: Level 2.
+    *   `readings`: Level 1.
+    *   `pos` (Caja/Cobranza): Level 2.
+    *   `billing` (Boletas): Level 1.
+4.  **Dirigente / Administrador:**
+    *   Acceso Nivel 2 en todos los módulos administrativos, configuración global de tarifas y gestión de usuarios/permisos.
 
 ---
 
-## MÓDULO 4: Recaudación, Caja y Morosidad
-*Objetivo: Procesar los ingresos monetarios del comité y controlar las deudas.*
+### MÓDULO 1: Dashboard de Presentación (Landing Pública)
+*Objetivo: Portal institucional público del comité APR para información a la comunidad.*
 
-*   **Punto de Venta / Caja Presencial:**
-    *   Interfaz rápida para la secretaria del comité. Busca al socio, muestra las boletas pendientes y permite registrar el pago en efectivo o transferencia.
-    *   Emisión de un comprobante de pago digital imprimible en formato ticket térmico (58mm/80mm).
-*   **Control Automático de Morosidad:**
-    *   Al ejecutar un nuevo cierre de mes, el sistema busca boletas anteriores que sigan con estado "Pendiente".
-    *   Aplica la multa por mora configurada (monto fijo o porcentaje) y acumula el saldo anterior en la nueva boleta del socio.
-*   **Listado de Corte Automático:**
-    *   Vista que filtra y genera un reporte en PDF de todos los socios con 2 o más boletas consecutivas impagas, ordenados por sector para el equipo técnico.
-
----
-
-## MÓDULO 5: Reportabilidad Técnica y Contable
-*Objetivo: Proveer métricas críticas de operación y administración.*
-
-*   **Balance de Agua (Cálculo de Pérdidas):**
-    *   Registro mensual de la "Macro-medición" (el agua total extraída de la bomba/pozo).
-    *   El sistema calcula: $Agua\ No\ Facturada = Macro-medición - \sum(Micro-mediciones\ de\ socios)$.
-    *   Representación en un gráfico de torta/línea (usando Chart.js) para monitorear el porcentaje de pérdidas por fugas en las matrices de la red.
-*   **Reportes de Caja Financieros:**
-    *   Libro de Ingresos y Gastos mensual.
-    *   Exportación directa a formato Excel (`.xlsx`) utilizando la librería `pandas` u `openpyxl` en Python.
-
-# Requerimientos Legales y Cumplimiento Normativo para APR en Chile (Ley 20.998)
-
-Para que este software pueda competir con 5SNAP y comercializarse legalmente a comités o cooperativas de Servicios Sanitarios Rurales (SSR) en Chile, el sistema debe cumplir obligatoriamente con las siguientes directrices fiscalizadas por la SISS y la DSSR.
+*   **Acceso:** Público (Sin autenticación requerida).
+*   **Rutas / Vistas:**
+    *   `/` (Inicio / Hero Section)
+    *   `/servicios` (Información de empalmes, factibilidad y tarifas públicas)
+    *   `/quienes-somos` (Historia, directiva y reglamento interno)
+    *   `/obras` (Noticias de proyectos, cortes programados y mejoras de red)
+    *   `/info-util` (Ahorro de agua, fechas de pago y protocolos)
+    *   `/directivos` (Organigrama del comité)
+    *   `/contacto` (Formulario de consultas y teléfonos de emergencia)
+    *   *Redirección:* Botón "**MI APR**" apunta a `/auth/login`.
+*   **Archivos de trabajo:**
+    *   `app/blueprints/dashboard.py`
+    *   `app/templates/layouts/base_public.html`
+    *   `app/templates/components/public_navbar.html`
+    *   `app/templates/dashboard/index.html` (y sub-vistas atómicas)
 
 ---
 
-## 1. Estructura Tarifaria Homologada (DSSR)
-*   **Separación de Conceptos:** La base de datos y la visualización de la boleta deben separar estrictamente los ingresos por:
-    1.  Cargo Fijo Sanitario.
-    2.  Consumo de Agua Variable (Tramos normal y sobreconsumo).
-    3.  Aportes de Capital o Cuotas de Incorporación (si aplica).
-    4.  Intereses por mora de meses anteriores.
-*   **Restricción:** El sistema no puede aplicar cobros arbitrarios o conceptos comerciales que no estén previamente aprobados por la asamblea del comité y ratificados por el organismo regulador competente.
+### MÓDULO 2: Autenticación, Usuarios y Permisos (`auth`)
+*Objetivo: Gestión de acceso seguro, sesiones y control granular de permisos (0, 1, 2).*
+
+*   **Funcionalidades:**
+    *   Login con RUT (limpieza dinámica de puntos y guion en cliente/servidor) y clave hash (`Werkzeug`/`Bcrypt`).
+    *   Manejo de sesiones mediante `Flask-Login`.
+    *   Decorador personalizado `@permission_required(module, min_level)` que valida si el usuario tiene permiso `1` o `2` antes de responder una ruta.
+    *   Administrador de Usuarios y Asignación de Roles/Permisos por Módulo.
+    *   Recuperación de clave por correo o RUT registrado.
+*   **Archivos de trabajo:**
+    *   `app/models/user.py` (Incluye tabla `User` y matriz/JSON de permisos por módulo).
+    *   `app/services/auth_service.py` (Decoradores `@permission_required` e inicio de sesión).
+    *   `app/services/rut_validator.py`
+    *   `app/blueprints/auth.py`
+    *   `app/static/js/rut_val.js`
+    *   `app/templates/auth/login.html`
+    *   `app/templates/auth/recover_password.html`
+    *   `app/templates/auth/users_admin.html` (Gestión de usuarios y niveles de permiso)
 
 ---
 
-## 2. Gestión de Subsidios Estatales (Decreto Supremo Nº 171)
-*   **Cálculo e Informes de Cobro Municipal:** El estado subsidia el consumo de agua potable a familias vulnerables. El software debe generar de forma obligatoria un informe mensual consolidado en formato Excel estructurado por la municipalidad correspondiente.
-*   **Campos Requeridos en el Informe:** RUT del Beneficiario, Número de Decreto del Subsidio, Porcentaje Subsidiado, Consumo en $m^3$, Monto Pesos ($) Subsidiado cobrado al Municipio, y Monto Neto cobrado al Socio.
-*   **Validación de Tope:** El software debe bloquear estrictamente el cálculo de subsidio por sobre los 15 metros cúbicos mensuales por socio, según dicta la ley actual.
+### MÓDULO 3: Panel Principal Interno / Portal Socio (`main`)
+*Objetivo: Workspace administrativo post-login adaptado al nivel de acceso del usuario.*
+
+*   **Funcionalidades:**
+    *   Vista diferenciada según el rol:
+        *   **Vista Staff:** Resumen ejecutivo (total recaudado, % lecturas, deudores en mora y alertas).
+        *   **Vista Socio ("MI APR"):** Estado de cuenta personal, historial de consumo ($m^3$), boleta actual en PDF y botón de pago.
+*   **Archivos de trabajo:**
+    *   `app/blueprints/main.py`
+    *   `app/templates/layouts/base_admin.html`
+    *   `app/templates/components/admin_sidebar.html` (Opciones renderizadas dinámicamente según nivel de permiso > 0)
+    *   `app/templates/main/admin_dashboard.html`
+    *   `app/templates/main/socio_portal.html`
 
 ---
 
-## 3. Integración con Facturación Electrónica (SII)
-*   **Documento Tributario Electrónico (DTE):** Las APR están obligadas a emitir Boletas Electrónicas y/o Facturas por los servicios sanitarios entregados.
-*   **Requerimiento Técnico backend:** El backend en Python debe estructurar los datos del cobro mensual en formato XML según el esquema del Servicio de Impuestos Internos (SII).
-*   **Estrategia de Desarrollo:** Implementar una integración vía API REST utilizando un proveedor de facturación intermedio (ej: OpenFactura, Haulmer, Bsale, u otro similar) o conexión directa mediante firmas digitales, garantizando el envío del documento y el retorno del timbre electrónico (PDF con código de barras bidimensional PDF417).
+### MÓDULO 4: Gestión de Socios, Medidores y Conexiones (`partners`)
+*Objetivo: Administrar el catastro maestro del comité.*
+
+*   **Nivel de Permiso Requerido:** Lectura (`1`), Escritura/CRUD (`2`).
+*   **Funcionalidades:**
+    *   Ficha Única del Socio (RUT validado, dirección, sector, datos de contacto, estado).
+    *   Catastro de Medidores (Nº Serie, Marca, Coordenadas GPS, Estado) en relación $1:N$ con socios.
+    *   Gestión de cambio de medidor (registro de lectura final saliente e inicial entrante).
+*   **Archivos de trabajo:**
+    *   `app/models/partner.py`
+    *   `app/models/meter.py`
+    *   `app/blueprints/partners.py`
+    *   `app/templates/partners/list.html`
+    *   `app/templates/partners/form.html`
+    *   `app/templates/partners/meter_change.html`
 
 ---
 
-## 4. Exportación de Datos para Fiscalización (SISS)
-*   **Informes Técnicos del Servicio:** La Superintendencia de Servicios Sanitarios (SISS) requiere datos periódicos del comportamiento del APR. El sistema debe contar con consultas SQL listas para exportar los siguientes indicadores:
-    *   **Índice de Continuidad del Servicio:** Registro de horas/días sin suministro o por cortes de emergencia programados.
-    *   **Registro de Presiones y Cloro:** Formulario técnico donde el operario ingresa manualmente los niveles de cloro libre residual (PPM) medidos en las puntas de red, con alertas si bajan del límite legal (0.2 mg/L).
-    *   **Catastro de Pérdidas:** El reporte de Balance de Agua (Módulo 5 de funcionalidades) debe ser exportable en un formato estándar compatible con las planillas de rendición de cuentas de la DSSR.
+### MÓDULO 5: Toma de Lecturas en Terreno (`readings`)
+*Objetivo: Captura de consumos mensuales desde smartphone (Mobile-First & Offline-Ready).*
+
+*   **Nivel de Permiso Requerido:** Lectura (`1`), Ingreso/Sincronización (`2`).
+*   **Funcionalidades:**
+    *   Interfaz con teclado numérico forzado y búsqueda por ruta/sector.
+    *   Validación en tiempo real por JS: Alerta si el consumo excede en un 100% el promedio de los últimos 3 meses o si la lectura es menor a la anterior.
+    *   Sincronización Offline (`LocalStorage`): En caso de perder señal, guarda las lecturas y habilita envío en lote (`POST`) al recuperar internet.
+*   **Archivos de trabajo:**
+    *   `app/models/reading.py`
+    *   `app/blueprints/readings.py`
+    *   `app/static/js/offline_sync.js`
+    *   `app/static/js/reading_val.js`
+    *   `app/templates/readings/capture.html`
 
 ---
 
-## 5. Normas de Suspensión de Servicio (Cortes por Deuda)
-*   **Plazos Legales de Aviso:** El sistema no puede emitir órdenes de corte de manera aleatoria. La ley estipula que el corte procede tras acumular 2 boletas impagas consecutivas.
-*   **Notificación Previa:** La boleta actual emitida debe indicar explícitamente en el cuerpo del documento si el socio se encuentra en "Aviso de Corte" indicando la fecha límite de pago antes de la suspensión física del servicio. El software debe validar que hayan transcurrido los días hábiles legales mínimos antes de incluir al socio en la ruta de corte.
+### MÓDULO 6: Motor de Facturación, Tarifas y Subsidios (`billing`)
+*Objetivo: Procesar consumos y calcular cobros respetando la Ley 20.998 y Dec. Sup. Nº 171.*
 
-# estructura de carpetas y archivos
-```
+*   **Nivel de Permiso Requerido:** Lectura (`1`), Configurar/Cierre de Mes (`2`).
+*   **Funcionalidades:**
+    *   Configuración de Tarifas (Cargo Fijo, Valor $m^3$ Base, Límite Sobreconsumo, Valor $m^3$ Sobreconsumo, Multa por Mora).
+    *   Cálculo de Subsidios Estatales: Aplica % de subsidio respetando estrictamente el **tope máximo legal de 15 $m^3$** por socio.
+    *   Motor Cierre de Mes: Generación masiva de boletas y cálculo de saldos pendientes.
+*   **Archivos de trabajo:**
+    *   `app/models/billing.py`
+    *   `app/services/billing_engine.py`
+    *   `app/blueprints/billing.py`
+    *   `app/templates/billing/config.html`
+    *   `app/templates/billing/process.html`
+
+---
+
+### MÓDULO 7: Facturación Electrónica DTE / SII (`sii`)
+*Objetivo: Emisión de Boletas Electrónicas normadas por el Servicio de Impuestos Internos.*
+
+*   **Nivel de Permiso Requerido:** Lectura (`1`), Emisión/Envío DTE (`2`).
+*   **Funcionalidades:**
+    *   Transformación de datos de cobro a esquema XML tributario del SII.
+    *   Integración vía API REST con proveedor DTE intermedio (OpenFactura, Haulmer, etc.).
+    *   Obtención de timbre electrónico (PDF417) para impresión.
+*   **Archivos de trabajo:**
+    *   `app/services/sii_service.py`
+    *   `app/blueprints/sii.py`
+
+---
+
+### MÓDULO 8: Recaudación, Caja y Morosidad (`pos`)
+*Objetivo: Recepción de pagos presenciales y control de deudores.*
+
+*   **Nivel de Permiso Requerido:** Lectura (`1`), Procesar Pagos/Caja (`2`).
+*   **Funcionalidades:**
+    *   Punto de Venta / Caja: Búsqueda rápida de socio, cobro e impresión en ticket térmico (58mm/80mm).
+    *   Listado de Orden de Corte: Detección automática de socios con 2 o más boletas impagas consecutivas.
+*   **Archivos de trabajo:**
+    *   `app/models/payment.py`
+    *   `app/blueprints/pos.py`
+    *   `app/static/js/pos_print.js`
+    *   `app/templates/pos/cashier.html`
+    *   `app/templates/pos/ticket_template.html`
+
+---
+
+### MÓDULO 9: Fiscalización SISS y Subsidios Municipales (`reports`)
+*Objetivo: Generación de informes requeridos por la SISS, DSSR y Municipalidades.*
+
+*   **Nivel de Permiso Requerido:** Lectura (`1`), Carga de muestras/Exportar (`2`).
+*   **Funcionalidades:**
+    *   Exportación de informe consolidado de subsidios a Excel (`pandas`/`openpyxl`) según Decreto Supremo Nº 171.
+    *   Balance de Agua (Agua No Facturada = Macro-medición - Micro-mediciones).
+    *   Registro técnico de Cloro Libre Residual (PPM) y nivel de Presión en Puntas de Red.
+*   **Archivos de trabajo:**
+    *   `app/models/technical.py`
+    *   `app/services/siss_reports.py`
+    *   `app/services/export_service.py`
+    *   `app/blueprints/reports.py`
+    *   `app/static/js/charts.js`
+    *   `app/templates/reports/water_balance.html`
+    *   `app/templates/reports/siss_cloro.html`
+
+---
+
+## Estructura de Directorios del Proyecto
+
+```text
 APR_SaaS/
 │
-├── config.py                 # Configuración por entorno (Development, Production, SQLite DB URL)
-├── app.py                    # Application Factory (Inicializa Flask, DB, Migraciones y Blueprints)
-├── wsgi.py                   # Punto de entrada para el servidor de producción (Gunicorn/Waitress)
-├── requirements.txt          # Dependencias de Python (Flask, SQLAlchemy, Pandas, openpyxl, etc.)
-├── .env.example              # Ejemplo de variables de entorno (Secret Key, credenciales API SII/OpenFactura)
-├── README.md                 # Documentación del proyecto
+├── config.py                 # Ajustes por entorno (Dev/Prod, Base de Datos, Keys)
+├── app.py                    # Application Factory (Init Flask, Blueprints y DB)
+├── wsgi.py                   # Entrada servidor WSGI
+├── requirements.txt          # Dependencias
+├── .env.example
+├── README.md
 │
 ├── app/
-│   ├── __init__.py           # Inicialización de la aplicación Flask y extensiones
+│   ├── __init__.py
 │   │
-│   ├── models/               # Modelos de base de datos (SQLAlchemy ORM)
+│   ├── models/               # Definiciones ORM (SQLAlchemy)
 │   │   ├── __init__.py
-│   │   ├── partner.py        # Socios/Clientes (RUT con verificador, Datos personales, Subsidios)
-│   │   ├── meter.py          # Medidores (Nº Serie, Marca, Coordenadas GPS, Estado) y Cambios de medidor
-│   │   ├── reading.py        # Lecturas mensuales de consumos
-│   │   ├── billing.py        # Boletas, Detalle de tarifas, Subsidios aplicados, Multas/Intereses
-│   │   ├── payment.py        # Registros de Caja, Transacciones POS y Comprobantes
-│   │   └── technical.py      # Macro-medidores, Registro de Cloro Residual/Presión, Eventos de Corte
+│   │   ├── user.py           # Módulo 2: Usuarios, Roles y Permisos (0, 1, 2)
+│   │   ├── partner.py        # Módulo 4: Socios
+│   │   ├── meter.py          # Módulo 4: Medidores
+│   │   ├── reading.py        # Módulo 5: Lecturas
+│   │   ├── billing.py        # Módulo 6: Boletas y Tarifas
+│   │   ├── payment.py        # Módulo 8: Pagos y Caja
+│   │   └── technical.py      # Módulo 9: Macro-medición y Cloro
 │   │
-│   ├── services/             # Lógica Core de Negocio y Dominio Legal
+│   ├── services/             # Lógica de Negocio y Dominio Legal
 │   │   ├── __init__.py
-│   │   ├── rut_validator.py  # Algoritmo de validación de RUT chileno (Módulo 1)
-│   │   ├── billing_engine.py # Motor de cálculo tarifario, sobreconsumo y tope subsidio <=15m³ (Módulo 3 & Ley 20.998)
-│   │   ├── sii_service.py    # Generación de XML y conexión API para Facturación Electrónica (DTE / SII)
-│   │   ├── siss_reports.py   # Generador de reportes legales (Continuidad, Cloro residual, Balance de Agua)
-│   │   └── export_service.py # Exportación de planillas Excel para la Municipalidad (Decreto Supremo Nº 171)
+│   │   ├── auth_service.py   # Módulo 2: Decoradores @permission_required y Hash
+│   │   ├── rut_validator.py  # Módulo 2 / 4
+│   │   ├── billing_engine.py # Módulo 6
+│   │   ├── sii_service.py    # Módulo 7
+│   │   ├── siss_reports.py   # Módulo 9
+│   │   └── export_service.py # Módulo 9
 │   │
-│   ├── blueprints/           # Controladores y Endpoints (Rutas HTTP y API)
+│   ├── blueprints/           # Controladores Modularizados
 │   │   ├── __init__.py
-│   │   ├── main.py           # Dashboard principal e indicadores generales
-│   │   ├── partners.py       # CRUD Ficha Única del Socio y Medidores asociados (Módulo 1)
-│   │   ├── readings.py       # API y Vistas para la Toma de Lecturas en Terreno Mobile-First (Módulo 2)
-│   │   ├── billing.py        # Configuración global de tarifas y ejecutor del Cierre de Mes (Módulo 3)
-│   │   ├── pos.py            # Punto de Venta / Caja Presencial y Gestión de Morosidad (Módulo 4)
-│   │   └── reports.py        # Reportabilidad técnica, Balance de Agua y Fiscalización (Módulo 5)
+│   │   ├── dashboard.py      # Módulo 1 (Landing pública)
+│   │   ├── auth.py           # Módulo 2 (Login / Permisos / Usuarios)
+│   │   ├── main.py           # Módulo 3 (Panel Privado / Portal Socio)
+│   │   ├── partners.py       # Módulo 4 (Socios / Medidores)
+│   │   ├── readings.py       # Módulo 5 (Toma de lecturas)
+│   │   ├── billing.py        # Módulo 6 (Motor de cálculo y cierre)
+│   │   ├── sii.py            # Módulo 7 (DTE / SII)
+│   │   ├── pos.py            # Módulo 8 (Caja / Punto de Venta)
+│   │   └── reports.py        # Módulo 9 (SISS / Municipalidad)
 │   │
-│   ├── static/               # Archivos estáticos
+│   ├── static/
 │   │   ├── css/
-│   │   │   └── input.css     # Archivo fuente de Tailwind CSS
+│   │   │   └── input.css     # Fuente Tailwind CSS
 │   │   ├── js/
-│   │   │   ├── rut_val.js    # Validación de RUT chileno en el cliente
-│   │   │   ├── offline_sync.js # Manejo de LocalStorage, detección offline y envío batch
-│   │   │   ├── reading_val.js # Alertas en tiempo real por anomalías de consumo (>100% o menor)
-│   │   │   ├── pos_print.js  # Formateador de impresión para ticket térmico (58mm/80mm)
-│   │   │   └── charts.js     # Gráficos del Balance de Pérdidas de Agua (Chart.js)
-│   │   └── dist/             # Archivos CSS/JS compilados para producción
-│   │       └── output.css
+│   │   │   ├── rut_val.js    # Formateador/Validador RUT en cliente
+│   │   │   ├── offline_sync.js # LocalStorage y sync offline
+│   │   │   ├── reading_val.js # Alerta consumos anómalos
+│   │   │   ├── pos_print.js  # Formateador impresión ticket
+│   │   │   └── charts.js     # Gráficos Chart.js
+│   │   └── dist/
+│   │       └── output.css    # CSS compilado
 │   │
-│   └── templates/            # Plantillas HTML (Jinja2)
-│       ├── base.html         # Plantilla maestra (Layout general con Tailwind CSS)
-│       ├── components/       # Modales, Alertas y Navbar
-│       │   ├── navbar.html
+│   └── templates/
+│       ├── layouts/
+│       │   ├── base_public.html # Layout público
+│       │   └── base_admin.html  # Layout privado
+│       ├── components/
+│       │   ├── public_navbar.html
+│       │   ├── admin_sidebar.html
 │       │   └── anomaly_modal.html
-│       ├── partners/         # Vistas Módulo 1
-│       │   ├── list.html
-│       │   ├── form.html
-│       │   └── meter_change.html
-│       ├── readings/         # Vistas Módulo 2 (Mobile-First)
-│       │   └── capture.html  # Interfaz optimizada con teclado numérico e inputs adaptados
-│       ├── billing/          # Vistas Módulo 3
-│       │   ├── config.html
-│       │   └── process.html
-│       ├── pos/              # Vistas Módulo 4
-│       │   ├── cashier.html  # Interfaz de cobranza presencial
-│       │   └── ticket_template.html # Plantilla de ticket para la boleta/comprobante
-│       └── reports/          # Vistas Módulo 5 y Cumplimiento Normativo
-│           ├── water_balance.html
-│           ├── municipal_subsidy.html
-│           └── siss_cloro.html
+│       ├── dashboard/        # Módulo 1
+│       ├── auth/             # Módulo 2
+│       ├── main/             # Módulo 3
+│       ├── partners/         # Módulo 4
+│       ├── readings/         # Módulo 5
+│       ├── billing/          # Módulo 6
+│       ├── pos/              # Módulo 8
+│       └── reports/          # Módulo 9
 │
-├── instance/                 # Base de datos local SQLite y archivos persistentes
+├── instance/
 │   └── apr_database.sqlite
-│
-├── migrations/               # Control de versiones del esquema de base de datos (Flask-Migrate/Alembic)
-└── tests/                    # Pruebas unitarias e integración
-    ├── test_billing.py       # Tests del cálculo tarifario y tope de 15m³ de subsidio
-    ├── test_rut.py           # Unit tests de algoritmos DV del RUT
-    └── test_sii.py           # Tests del formateador DTE
- ```
+├── migrations/
+└── tests/
+    ├── test_auth.py
+    ├── test_billing.py
+    └── test_rut.py
