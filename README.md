@@ -80,7 +80,7 @@ Este documento define el alcance funcional detallado para el desarrollo modular 
     *   Libro de Ingresos y Gastos mensual.
     *   Exportación directa a formato Excel (`.xlsx`) utilizando la librería `pandas` u `openpyxl` en Python.
 
-    # Requerimientos Legales y Cumplimiento Normativo para APR en Chile (Ley 20.998)
+# Requerimientos Legales y Cumplimiento Normativo para APR en Chile (Ley 20.998)
 
 Para que este software pueda competir con 5SNAP y comercializarse legalmente a comités o cooperativas de Servicios Sanitarios Rurales (SSR) en Chile, el sistema debe cumplir obligatoriamente con las siguientes directrices fiscalizadas por la SISS y la DSSR.
 
