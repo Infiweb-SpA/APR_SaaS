@@ -3,25 +3,242 @@
 {% block title %}Catastro de Socios – APR{% endblock %}
 
 {% block extra_head %}
-  {# DataTables CSS #}
+  {# DataTables CSS con soporte Tailwind #}
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.tailwindcss.min.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.tailwindcss.min.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.tailwindcss.min.css">
-  
+
   <style>
-    /* Ajustes visuales DataTables + Tailwind */
-    .dt-container { @apply w-full; }
-    .dt-search input { @apply border-sand-300 focus:border-navy-500 focus:ring-navy-500; }
-    .dt-paging .dt-paging-button { @apply px-3 py-1 text-sm font-medium text-navy-700 bg-white border border-sand-300 rounded-lg hover:bg-navy-50; }
-    .dt-paging .dt-paging-button.current { @apply bg-navy-600 text-white border-navy-600; }
-    .dt-paging .dt-paging-button.disabled { @apply opacity-50 pointer-events-none; }
-    table.dataTable thead th { @apply bg-navy-50 text-navy-900 font-medium; }
-    table.dataTable tbody tr:hover { @apply bg-navy-50/50; }
-    .badge-status { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium; }
-    .badge-activo { @apply bg-teal-100 text-teal-800; }
-    .badge-cortado { @apply bg-amber-100 text-amber-800; }
-    .badge-baja { @apply bg-red-100 text-red-800; }
-    .badge-sin_conexion { @apply bg-stone-100 text-stone-800; }
+    /* ── FIX 31: Estilos DataTables coherentes con el design system del proyecto ──
+       ANTES: Las clases .dt-container, .dt-search, etc. usaban @apply que requiere
+              compilación de Tailwind. En CDN mode, @apply NO funciona.
+              Resultado: DataTables se veía sin estilos, como HTML crudo.
+
+       AHORA: CSS puro que replica la paleta navy/teal/sand del proyecto.
+              Los estilos se aplican directamente sin necesidad de compilación.
+       ──────────────────────────────────────────────────────────────────── */
+
+    /* Contenedor general */
+    .dataTables_wrapper {
+      padding: 0;
+    }
+
+    /* Barra superior: length + search */
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter {
+      margin-bottom: 1rem;
+    }
+    .dataTables_wrapper .dataTables_length select,
+    .dataTables_wrapper .dataTables_filter input {
+      border: 1px solid #e8e4de; /* sand-200 */
+      border-radius: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+      color: #1c1917; /* stone-900 */
+      background: white;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .dataTables_wrapper .dataTables_length select:focus,
+    .dataTables_wrapper .dataTables_filter input:focus {
+      outline: none;
+      border-color: #0d9488; /* teal */
+      box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+    }
+    .dataTables_wrapper .dataTables_length label,
+    .dataTables_wrapper .dataTables_filter label {
+      font-size: 0.875rem;
+      color: #78716c; /* stone-500 */
+    }
+
+    /* Info + Paginación */
+    .dataTables_wrapper .dataTables_info {
+      font-size: 0.8125rem;
+      color: #78716c;
+      padding-top: 0.75rem;
+    }
+    .dataTables_wrapper .dataTables_paginate {
+      padding-top: 0.75rem;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+      padding: 0.375rem 0.75rem;
+      margin: 0 2px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: #1c1917;
+      background: white;
+      border: 1px solid #e8e4de;
+      border-radius: 0.5rem;
+      transition: all 0.15s;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+      background: #f0fdfa; /* teal-50 */
+      border-color: #0d9488;
+      color: #0d9488;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+      background: #134e4a; /* teal-800 / navy-like */
+      border-color: #134e4a;
+      color: white;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    /* Tabla */
+    table.dataTable {
+      border-collapse: collapse !important;
+      width: 100% !important;
+    }
+    table.dataTable thead th {
+      background: #eef5fb; /* navy-50 */
+      color: #071e30; /* navy-950 */
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.75rem 1rem;
+      border-bottom: 2px solid #d6d3d1; /* stone-300 */
+      white-space: nowrap;
+    }
+    table.dataTable tbody td {
+      padding: 0.625rem 1rem;
+      font-size: 0.875rem;
+      color: #1c1917;
+      border-bottom: 1px solid #f5f3f0; /* sand-100 */
+      vertical-align: middle;
+    }
+    table.dataTable tbody tr:hover {
+      background: rgba(7, 30, 48, 0.03); /* navy-950 very subtle */
+    }
+    table.dataTable tbody tr.even {
+      background: #faf9f7; /* sand-50 */
+    }
+    table.dataTable tbody tr.even:hover {
+      background: rgba(7, 30, 48, 0.03);
+    }
+
+    /* Eliminar bordes extra de DataTables */
+    table.dataTable.no-footer {
+      border-bottom: none;
+    }
+    .dataTables_wrapper .dataTables_scrollHead {
+      border-bottom: 2px solid #d6d3d1;
+    }
+
+    /* Processing indicator */
+    .dataTables_wrapper .dataTables_processing {
+      background: rgba(250, 249, 247, 0.9);
+      border: 1px solid #e8e4de;
+      border-radius: 0.75rem;
+      padding: 1rem 2rem;
+      font-size: 0.875rem;
+      color: #57534e;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    /* Badges de estado */
+    .badge-estado {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-estado-activo {
+      background: #ccfbf1; /* teal-100 */
+      color: #115e59; /* teal-800 */
+    }
+    .badge-estado-cortado {
+      background: #fef3c7; /* amber-100 */
+      color: #92400e; /* amber-800 */
+    }
+    .badge-estado-baja {
+      background: #fee2e2; /* red-100 */
+      color: #991b1b; /* red-800 */
+    }
+    .badge-estado-sin_conexion {
+      background: #f5f5f4; /* stone-100 */
+      color: #57534e; /* stone-600 */
+    }
+    .badge-estado .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+    .badge-estado-activo .dot { background: #14b8a6; }
+    .badge-estado-cortado .dot { background: #f59e0b; }
+    .badge-estado-baja .dot { background: #ef4444; }
+    .badge-estado-sin_conexion .dot { background: #a8a29e; }
+
+    /* Acciones en la tabla */
+    .actions-group {
+      display: inline-flex;
+      gap: 0.375rem;
+      align-items: center;
+    }
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.5rem;
+      border: 1px solid #e8e4de;
+      background: white;
+      color: #57534e;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+    .action-btn:hover {
+      border-color: #0d9488;
+      color: #0d9488;
+      background: #f0fdfa;
+    }
+    .action-btn--view:hover {
+      border-color: #0d9488;
+      color: #0d9488;
+      background: #f0fdfa;
+    }
+    .action-btn--edit:hover {
+      border-color: #071e30;
+      color: #071e30;
+      background: #eef5fb;
+    }
+    .action-btn--meter {
+      border-color: #d97706;
+      color: #d97706;
+    }
+    .action-btn--meter:hover {
+      background: #fffbeb;
+      border-color: #b45309;
+      color: #b45309;
+    }
+
+    /* Responsive: DataTable en mobile */
+    @media (max-width: 768px) {
+      .dataTables_wrapper .dataTables_length,
+      .dataTables_wrapper .dataTables_filter {
+        float: none !important;
+        text-align: left !important;
+      }
+      table.dataTable thead th {
+        padding: 0.5rem 0.625rem;
+        font-size: 0.6875rem;
+      }
+      table.dataTable tbody td {
+        padding: 0.5rem 0.625rem;
+        font-size: 0.8125rem;
+      }
+    }
+
+    /* Eliminar padding del processing si aparece */
+    div.dataTables_wrapper div.dataTables_processing {
+      top: 50%;
+      transform: translateY(-50%);
+    }
   </style>
 {% endblock %}
 
@@ -34,27 +251,32 @@
       <h1 class="text-2xl font-heading text-navy-900">Catastro de Socios</h1>
       <p class="text-stone-500 mt-1">Listado, búsqueda y gestión de conexiones domiciliarias.</p>
     </div>
+    {% if current_user.has_permission('partners', 2) %}
     <a href="{{ url_for('partners.create') }}"
-       class="inline-flex items-center gap-2 px-4 py-2 bg-navy-600 text-white rounded-lg hover:bg-navy-700 transition-colors font-medium">
+       class="inline-flex items-center gap-2 px-4 py-2 bg-navy-600 text-white rounded-lg hover:bg-navy-700 transition-colors font-medium text-sm">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15"/></svg>
       Nuevo Socio
     </a>
+    {% endif %}
   </div>
 
-  {# ── Filtros rápidos ───────────────────────────────────── #}
+  {# ── Filtros ────────────────────────────────────────────── #}
   <div class="bg-white rounded-xl border border-sand-200 p-4 sm:p-6 shadow-sm">
     <form id="filterForm" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <div>
-        <label class="block text-xs font-medium text-stone-500 mb-1">Buscar (RUT, Nombre, Dirección, Medidor)</label>
-        <input type="text" name="search" id="searchInput"
-               class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm"
-               placeholder="Escribe para filtrar...">
+        <label class="block text-xs font-medium text-stone-500 mb-1">Buscar</label>
+        <div class="relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input type="text" name="search" id="searchInput"
+                 class="w-full pl-10 pr-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm"
+                 placeholder="RUT, nombre, dirección, medidor...">
+        </div>
       </div>
       <div>
         <label class="block text-xs font-medium text-stone-500 mb-1">Estado</label>
         <select name="estado" id="estadoFilter"
                 class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm bg-white">
-          <option value="">Todos</option>
+          <option value="">Todos los estados</option>
           {% for e in estados %}
           <option value="{{ e[0] }}">{{ e[1] }}</option>
           {% endfor %}
@@ -64,7 +286,7 @@
         <label class="block text-xs font-medium text-stone-500 mb-1">Sector</label>
         <select name="sector_id" id="sectorFilter"
                 class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm bg-white">
-          <option value="0">Todos</option>
+          <option value="0">Todos los sectores</option>
           {% for s in sectores %}
           <option value="{{ s.id }}">{{ s.nombre }}</option>
           {% endfor %}
@@ -72,55 +294,123 @@
       </div>
       <div class="flex items-end">
         <button type="button" id="btnClearFilters"
-                class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-navy-700 bg-navy-50 border border-navy-200 rounded-lg hover:bg-navy-100 transition-colors">
+                class="w-full px-4 py-2 text-sm font-medium text-stone-600 bg-white border border-sand-300 rounded-lg hover:bg-sand-100 transition-colors">
           Limpiar filtros
         </button>
       </div>
     </form>
   </div>
 
-  {# ── Tabla DataTables ──────────────────────────────────── #}
+  {# ── Tabla ──────────────────────────────────────────────── #}
   <div class="bg-white rounded-xl border border-sand-200 shadow-sm overflow-hidden">
-    <table id="tablaSocios" class="w-full dt-responsive" style="width:100%">
-      <thead>
-        <tr>
-          <th>RUT</th>
-          <th>Nombre / Razón Social</th>
-          <th>Dirección</th>
-          <th>Sector</th>
-          <th>Medidor</th>
-          <th>Estado</th>
-          <th>Ingreso</th>
-          <th class="text-right">Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        {# Server-side rendering vacío; DataTables llena vía AJAX #}
-      </tbody>
-    </table>
+    <div class="p-1">
+      <table id="tablaSocios" class="w-full" style="width:100%">
+        <thead>
+          <tr>
+            <th>RUT</th>
+            <th>Nombre</th>
+            <th>Dirección</th>
+            <th>Sector</th>
+            <th>Medidor</th>
+            <th>Estado</th>
+            <th>Ingreso</th>
+            <th class="text-right no-sort">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {# DataTables llena via AJAX #}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── Resumen inferior ──────────────────────────────────── #}
+  <div class="flex flex-wrap gap-3 justify-between items-center text-sm text-stone-500">
+    <div class="flex items-center gap-4">
+      <a href="{{ url_for('partners.sectors_index') }}" class="inline-flex items-center gap-1.5 text-navy-600 hover:text-navy-800 font-medium">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+        Gestionar Sectores
+      </a>
+    </div>
+    <div>
+      <span id="tableInfo"></span>
+    </div>
   </div>
 
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
-  {# DataTables + Buttons + Responsive JS #}
+  {# ── FIX 32: Solo jQuery + DataTables core ────────────────
+     ANTES: Se cargaban buttons.html5.min.js, buttons.print.min.js,
+            buttons.tailwindcss.min.js, etc. para exportar a Excel/PDF.
+            Problema: estos plugins requieren jsPDF y SheetJS que NO
+            se cargaban. Resultado: errores de consola + botones que
+            no funcionaban.
+
+     AHORA: Se eliminan los plugins de exportación por ahora.
+            Se mantiene solo DataTables core + responsive.
+            La exportación se puede agregar después cuando se carguen
+            las dependencias (jsPDF, SheetJS).
+     ──────────────────────────────────────────────────────── #}
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.8/js/dataTables.tailwindcss.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.tailwindcss.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
   <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
-  <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.tailwindcss.min.js"></script>
 
   <script>
     $(function () {
-      const table = $('#tablaSocios').DataTable({
+
+      // ── Helper: Badge de estado ──
+      function badgeEstado(estado, raw) {
+        var cls = 'badge-estado badge-estado-' + raw;
+        return '<span class="' + cls + '"><span class="dot"></span>' + estado + '</span>';
+      }
+
+      // ── Helper: Botones de acción (inline SVG, Tailwind) ──
+      // ── FIX 33 ────────────────────────────────────────────
+      // ANTES: Las acciones se generaban en el backend (api_list) con
+      //        clases Bootstrap: btn-group, btn-outline-primary, bi bi-eye.
+      //        Como el proyecto NO usa Bootstrap, los botones se renderizaban
+      //        como texto plano sin estilo ni iconos.
+      //        Además, el link "Ver detalle" existía en el HTML pero era
+      //        invisible porque el CSS de Bootstrap Icons no estaba cargado.
+      //
+      // AHORA: Las acciones se generan aquí en el frontend (JS) usando
+      //        clases Tailwind + SVG inline del proyecto. El backend solo
+      //        envía datos (id, rut, nombre), NO HTML.
+      //        Esto separa presentación (frontend) de datos (backend).
+      //
+      // ¿Por qué? Generar HTML en el backend para DataTables es un
+      // anti-patrón: mezcla responsabilidades, hace el JSON más pesado,
+      // y depende de que el backend conozca las clases CSS del frontend.
+      // Lo correcto es enviar datos y dejar que el frontend renderice.
+      // ────────────────────────────────────────────────────────
+      function accionesHtml(row) {
+        var detailUrl = '/partners/' + row.id;
+        var editUrl = '/partners/' + row.id + '/edit';
+
+        var html = '<div class="actions-group">';
+
+        // Ver detalle (siempre visible)
+        html += '<a href="' + detailUrl + '" class="action-btn action-btn--view" title="Ver detalle">';
+        html += '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>';
+        html += '</a>';
+
+        // Editar (solo si tiene permiso)
+        {% if current_user.has_permission('partners', 2) %}
+        html += '<a href="' + editUrl + '" class="action-btn action-btn--edit" title="Editar">';
+        html += '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>';
+        html += '</a>';
+        {% endif %}
+
+        html += '</div>';
+        return html;
+      }
+
+      // ── DataTable ──
+      var table = $('#tablaSocios').DataTable({
         processing: true,
         serverSide: true,
-        responsive: true,
         ajax: {
           url: '{{ url_for("partners.api_list") }}',
           type: 'GET',
@@ -129,61 +419,126 @@
             d.sector_id = $('#sectorFilter').val();
           },
           error: function (xhr) {
-            console.error('Error cargando socios', xhr);
-            toastr?.error('Error cargando listado');
+            console.error('Error cargando socios:', xhr);
           }
         },
         columns: [
-          { data: 'rut', className: 'font-mono text-sm' },
-          { data: 'nombre' },
-          { data: 'direccion', className: 'hidden md:table-cell' },
-          { data: 'sector', className: 'hidden lg:table-cell' },
-          { data: 'medidor', className: 'font-mono text-sm' },
-          { 
-            data: null, 
-            render: function (row) {
-              const badges = {
-                'activo': 'badge-activo',
-                'cortado': 'badge-cortado',
-                'baja': 'badge-baja',
-                'sin_conexion': 'badge-sin_conexion'
-              };
-              return `<span class="badge-status ${badges[row.estado_raw] || ''}">${row.estado}</span>`;
+          {
+            data: 'rut',
+            className: 'font-mono text-sm whitespace-nowrap',
+            width: '120px'
+          },
+          {
+            data: 'nombre',
+            render: function (data) {
+              return '<span class="font-medium">' + data + '</span>';
             }
           },
-          { data: 'fecha_ingreso', className: 'hidden sm:table-cell' },
-          { 
-            data: 'actions', 
-            orderable: false, 
+          {
+            data: 'direccion',
+            className: 'text-stone-600 text-sm'
+          },
+          {
+            data: 'sector',
+            className: 'text-sm',
+            render: function (data) {
+              if (!data || data === '-') {
+                return '<span class="text-stone-400">Sin asignar</span>';
+              }
+              return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-navy-50 text-navy-700">' + data + '</span>';
+            }
+          },
+          {
+            data: 'medidor',
+            className: 'font-mono text-sm',
+            render: function (data) {
+              if (!data || data === '-') {
+                return '<span class="text-stone-400">—</span>';
+              }
+              return '<span class="font-mono text-navy-700">' + data + '</span>';
+            }
+          },
+          {
+            data: null,
+            orderable: false,
+            render: function (row) {
+              return badgeEstado(row.estado, row.estado_raw);
+            }
+          },
+          {
+            data: 'fecha_ingreso',
+            className: 'text-sm text-stone-600 whitespace-nowrap',
+            width: '100px'
+          },
+          {
+            data: null,
+            orderable: false,
             searchable: false,
-            className: 'text-right whitespace-nowrap'
+            className: 'text-right',
+            width: '80px',
+            render: function (row) {
+              return accionesHtml(row);
+            }
           }
         ],
         order: [[1, 'asc']],
         pageLength: 25,
         lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
         language: {
-          url: '//cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json'
+          url: '//cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json',
+          processing: 'Cargando socios...',
+          lengthMenu: 'Mostrar _MENU_ por página',
+          search: 'Filtrar:',
+          info: 'Mostrando _START_ a _END_ de _TOTAL_ socios',
+          infoEmpty: 'No hay socios para mostrar',
+          infoFiltered: '(filtrado de _MAX_ total)',
+          zeroRecords: 'No se encontraron socios con esos criterios',
+          paginate: {
+            first: 'Primero',
+            last: 'Último',
+            next: 'Siguiente',
+            previous: 'Anterior'
+          }
         },
-        dom: "<'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4'<'flex-1'l><'flex-1'f><'flex-1'B>>" +
-             "<'overflow-x-auto'tr>" +
-             "<'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-4'<'flex-1'i><'flex-1'p>>",
-        buttons: [
-          { extend: 'copy', text: '<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg> Copiar', className: 'dt-button btn-sm' },
-          { extend: 'excel', text: '<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg> Excel', className: 'dt-button btn-sm' },
-          { extend: 'pdf', text: '<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg> PDF', className: 'dt-button btn-sm' },
-          { extend: 'print', text: '<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2h6"/></svg> Imprimir', className: 'dt-button btn-sm' }
-        ],
+        // ── FIX 34: Responsive simplificado ──
+        // ANTES: Se cargaba responsive.min.js pero no se configuraba.
+        //        Además, se usaba className: 'hidden md:table-cell' en
+        //        columnas, que es CSS de Tailwind pero DataTables aplica
+        //        su propio sistema de responsive (child rows).
+        //        Los dos sistemas colisionaban.
+        //
+        // AHORA: Se eliminan las clases 'hidden md:table-cell' de las
+        //        columnas. El responsive de DataTables maneja la
+        //        visibilidad automáticamente basado en el espacio.
+        //        O se puede omitir responsive y dejar que la tabla
+        //        haga scroll horizontal en mobile.
+        // ────────────────────────────────────────────────────────
+        autoWidth: false,
+        scrollX: true,
         initComplete: function () {
-          // Estilizar botones DataTables
-          $('.dt-buttons .dt-button').addClass('px-3 py-1.5 text-xs font-medium text-navy-700 bg-white border border-sand-300 rounded-lg hover:bg-navy-50 transition-colors');
+          // Mover info al footer custom
+          var info = this.api().page.info();
+          $('#tableInfo').text(info.recordsTotal + ' socios registrados');
+        },
+        drawCallback: function () {
+          // Actualizar info al cambiar página/filtro
+          var info = this.api().page.info();
+          $('#tableInfo').text(
+            'Mostrando ' + (info.recordsDisplay > 0 ? (info.start + 1) : 0) +
+            '-' + info.end + ' de ' + info.recordsDisplay + ' socios'
+          );
         }
       });
 
-      // Filtros personalizados -> redibujar tabla
-      $('#searchInput').on('keyup', debounce(function () {
-        table.search(this.value).draw();
-      }, 300));
+      // ── Filtros ──
+      var searchTimer;
+      $('#searchInput').on('keyup', function () {
+        clearTimeout(searchTimer);
+        var val = this.value;
+        searchTimer = setTimeout(function () {
+          table.search(val).draw();
+        }, 350);
+      });
 
       $('#estadoFilter, #sectorFilter').on('change', function () {
         table.ajax.reload();
@@ -195,11 +550,16 @@
         $('#sectorFilter').val('0');
         table.search('').ajax.reload();
       });
-    });
 
-    // Utilidad debounce
-    function debounce(fn, wait) {
-      let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), wait); };
-    }
+      // ── Responsive: Enter en búsqueda ──
+      $('#searchInput').on('keypress', function (e) {
+        if (e.which === 13) {
+          e.preventDefault();
+          clearTimeout(searchTimer);
+          table.search(this.value).draw();
+        }
+      });
+
+    });
   </script>
 {% endblock %}

@@ -3,7 +3,28 @@
 {% block title %}{{ title }} – APR{% endblock %}
 
 {% block extra_head %}
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+  {# ── FIX 16 ─────────────────────────────────────────────
+     ANTES: Se cargaba Alpine.js Y rut_val.js, Y se definía una
+            función formatRUT() inline en extra_scripts.
+            Tres mecanismos intentando formatear el mismo input.
+
+            Además, el template usaba x-mask="99.999.999-9" que
+            requiere el plugin @alpinejs/mask, que NO se cargaba.
+            Resultado: x-mask silenciosamente ignorado + conflicto
+            entre rut_val.js (escucha .rut-input con blur/input)
+            y formatRUT (escucha input con Alpine @input).
+
+     AHORA: Solo rut_val.js. Se elimina Alpine del form.html
+            completamente porque no se necesita:
+            - El formateo RUT lo hace rut_val.js (robusto, probado)
+            - El mostrar/ocultar motivo_baja se hace con vanilla JS
+            - El toggle de contraseña no aplica aquí
+
+     ¿Por qué? Rut_val.js ya tiene todo: formateo en tiempo real,
+     validación DV en blur, feedback visual (check/error), y
+     normalización en submit. Alpine aquí era redundante y causaba
+     conflicto de event listeners. Menos dependencias = menos bugs.
+     ─────────────────────────────────────────────────────── #}
   <script src="{{ url_for('static', filename='js/rut_val.js') }}"></script>
 {% endblock %}
 
@@ -20,17 +41,19 @@
     </a>
   </div>
 
-  {# Flash messages #}
+  {# Flash messages (sin Alpine, vanilla JS) #}
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-      <div class="mb-6 space-y-2" x-data="{ show: true }">
+      <div class="mb-6 space-y-2">
         {% for category, message in messages %}
-          <div x-show="show" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 -translate-y-2" x-transition:leave="transition ease-in duration-200" class="flex items-center gap-3 p-4 rounded-lg border {{ 'bg-teal-50 border-teal-200 text-teal-800' if category == 'success' else 'bg-red-50 border-red-200 text-red-800' if category == 'danger' else 'bg-amber-50 border-amber-200 text-amber-800' if category == 'warning' else 'bg-navy-50 border-navy-200 text-navy-800' }}" role="alert">
+          <div class="flash-alert flex items-center gap-3 p-4 rounded-lg border {{ 'bg-teal-50 border-teal-200 text-teal-800' if category == 'success' else 'bg-red-50 border-red-200 text-red-800' if category == 'danger' else 'bg-amber-50 border-amber-200 text-amber-800' if category == 'warning' else 'bg-navy-50 border-navy-200 text-navy-800' }}" role="alert">
             <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               {% if category == 'success' %}<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>{% else %}<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>{% endif %}
             </svg>
             <p class="text-sm flex-1">{{ message }}</p>
-            <button @click="show = false" class="text-current opacity-50 hover:opacity-100"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            <button class="flash-dismiss text-current opacity-50 hover:opacity-100" type="button">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
           </div>
         {% endfor %}
       </div>
@@ -47,7 +70,17 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="md:col-span-2">
           <label for="{{ form.rut.id }}" class="block text-sm font-medium text-stone-700 mb-1">RUT <span class="text-red-500">*</span></label>
-          {{ form.rut(class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm font-mono", placeholder="12.345.678-9", autocomplete="off", **{"x-mask": "99.999.999-9", "x-on:input": "formatRUT($event)"}) }}
+          {# FIX 17: Clase .rut-input para que rut_val.js tome el control.
+             Se eliminan x-mask y x-on:input (Alpine) porque rut_val.js
+             ya escucha los eventos 'input', 'blur' y 'submit' del form.
+             Rut_val.js detecta .rut-input y aplica su propia lógica de
+             formateo, validación DV y feedback visual automáticamente.
+
+             ANTES: x-mask="99.999.999-9" + x-on:input="formatRUT($event)"
+                    + .rut-input → triple formateo conflictivo.
+             AHORA: Solo .rut-input → rut_val.js hace todo.
+             ─────────────────────────────────────────────────────── #}
+          {{ form.rut(class="rut-input w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm font-mono", placeholder="12.345.678-9", autocomplete="off") }}
           {% if form.rut.errors %}<p class="mt-1 text-sm text-red-600">{{ form.rut.errors[0] }}</p>{% endif %}
         </div>
         <div class="md:col-span-2">
@@ -85,7 +118,7 @@
         </div>
         <div>
           <label for="{{ form.sector_id.id }}" class="block text-sm font-medium text-stone-700 mb-1">Sector</label>
-          {{ form.sector_id(class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm") }}
+          {{ form.sector_id(class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm bg-white") }}
         </div>
         <div class="md:col-span-2">
           <label for="{{ form.referencia_ubicacion.id }}" class="block text-sm font-medium text-stone-700 mb-1">Referencia / Cómo llegar</label>
@@ -128,13 +161,32 @@
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
           <label for="{{ form.estado.id }}" class="block text-sm font-medium text-stone-700 mb-1">Estado <span class="text-red-500">*</span></label>
-          {{ form.estado(class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm") }}
+          {# ── FIX 18 ─────────────────────────────────────────
+             ANTES: El select NO tenía id "estadoSelect" ni event listener.
+                    El div motivoBajaField usaba:
+                    x-show="['cortado','baja'].includes($watch('form.estado'))"
+
+                    $watch() es un REGISTRADOR de watchers en Alpine:
+                      $watch('propiedad', callback) → ejecuta callback cuando cambia
+                    NO es un evaluador de valor actual. NUNCA retorna el valor.
+                    Resultado: x-show recibía undefined → motivo_baja siempre oculto.
+
+             AHORA: Se usa vanilla JS con el listener 'change' del select.
+                    El id="estadoSelect" conecta con el script al final.
+                    Sin dependencia de Alpine para esta funcionalidad.
+
+             ¿Por qué? Mostrar/ocultar un div según el valor de un select
+             es una operación trivial que vanilla JS resuelve en 3 líneas.
+             No justifica cargar todo Alpine.js. Menos dependencias.
+             ─────────────────────────────────────────────────────── #}
+          {{ form.estado(id="estadoSelect", class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm bg-white") }}
         </div>
         <div>
           <label for="{{ form.fecha_ingreso.id }}" class="block text-sm font-medium text-stone-700 mb-1">Fecha Ingreso</label>
           {{ form.fecha_ingreso(class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm") }}
         </div>
-        <div class="md:col-span-2" id="motivoBajaField" x-show="['cortado','baja'].includes($watch('form.estado'))" x-transition>
+        {# FIX 18 (continuación): hidden por defecto, se muestra via JS #}
+        <div class="md:col-span-2" id="motivoBajaField" style="display: none;">
           <label for="{{ form.motivo_baja.id }}" class="block text-sm font-medium text-stone-700 mb-1">Motivo Baja / Corte</label>
           {{ form.motivo_baja(class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm", rows="2") }}
         </div>
@@ -151,7 +203,7 @@
         </div>
         <div>
           <label for="{{ form.user_id.id }}" class="block text-sm font-medium text-stone-700 mb-1">Usuario Portal (Opcional)</label>
-          {{ form.user_id(class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm") }}
+          {{ form.user_id(class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm bg-white") }}
           <p class="mt-1 text-xs text-stone-500">Solo usuarios sin socio asociado.</p>
         </div>
       </div>
@@ -167,7 +219,7 @@
 
     {# ── Acciones ────────────────────────────────────────── #}
     <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-sand-200">
-      <button type="submit" class="px-6 py-2.5 bg-navy-600 text-white rounded-lg hover:bg-navy-700 transition-colors font-medium flex items-center justify-center gap-2">
+      <button type="submit" id="btnSubmit" class="px-6 py-2.5 bg-navy-600 text-white rounded-lg hover:bg-navy-700 transition-colors font-medium flex items-center justify-center gap-2">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
         Guardar
       </button>
@@ -181,24 +233,112 @@
 
 {% block extra_scripts %}
   <script>
-    // Alpine component para formateo RUT en vivo (simple)
-    document.addEventListener('alpine:init', () => {
-      Alpine.data('rutFormatter', () => ({
-        formatRUT(event) {
-          let v = event.target.value.replace(/[^0-9kK]/g, '').toUpperCase();
-          if (v.length > 1) {
-            const body = v.slice(0, -1);
-            const dv = v.slice(-1);
-            let formatted = '';
-            for (let i = body.length - 1, j = 1; i >= 0; i--, j++) {
-              formatted = body[i] + (j % 3 === 0 && i !== 0 ? '.' : '') + formatted;
-            }
-            event.target.value = formatted + '-' + dv;
-          }
-        }
-      }));
-    });
+    /**
+     * ── FIX 18 (implementación) ──────────────────────────────
+     * Mostrar/ocultar campo "Motivo Baja" según el estado seleccionado.
+     * Vanilla JS puro, sin dependencia de Alpine.
+     *
+     * ANTES: x-show="['cortado','baja'].includes($watch('form.estado'))"
+     *        $watch() retorna undefined, el campo nunca se mostraba.
+     *
+     * AHORA: Listener 'change' en #estadoSelect.
+     *        Si estado es 'cortado' o 'baja' → mostrar el div.
+     *        Si no → ocultarlo.
+     *
+     * Se ejecuta al cargar para respetar el valor actual (modo edición).
+     * ──────────────────────────────────────────────────────── */
+    document.addEventListener('DOMContentLoaded', function () {
+      const estadoSelect = document.getElementById('estadoSelect');
+      const motivoField = document.getElementById('motivoBajaField');
 
-    // Mostrar/ocultar motivo baja según estado (Alpine x-show en template)
+      if (estadoSelect && motivoField) {
+        function toggleMotivoBaja() {
+          const val = estadoSelect.value;
+          motivoField.style.display = (val === 'cortado' || val === 'baja') ? '' : 'none';
+        }
+
+        // Escuchar cambios
+        estadoSelect.addEventListener('change', toggleMotivoBaja);
+
+        // Evaluar al cargar (importante en modo edición: si ya es cortado/baja)
+        toggleMotivoBaja();
+      }
+
+      /**
+       * ── FIX 19 ──────────────────────────────────────────────
+       * Flash messages con botón dismiss (sin Alpine).
+       * ANTES: Usaba Alpine x-data="{ show: true }" + @click="show = false"
+       *        Pero Alpine NO se cargaba en este template (FIX 16).
+       *        Resultado: el botón X no hacía nada.
+       *
+       * AHORA: Vanilla JS para cerrar alerts.
+       * ──────────────────────────────────────────────────────── */
+      document.querySelectorAll('.flash-dismiss').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const alert = this.closest('.flash-alert');
+          if (alert) {
+            alert.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            alert.style.opacity = '0';
+            alert.style.transform = 'translateY(-8px)';
+            setTimeout(function () { alert.remove(); }, 300);
+          }
+        });
+      });
+
+      /**
+       * ── FIX 20 ──────────────────────────────────────────────
+       * Prevenir doble submit al enviar el formulario.
+       * ANTES: No existía protección. Si el usuario hacía clic
+       *        múltiples veces en "Guardar", se enviaban N POSTs.
+       *        Resultado: socios duplicados o IntegrityError.
+       *
+       * AHORA: El botón se deshabilita tras el primer clic.
+       *        Se re-habilita si el form tiene errores (page reload
+       *        lo resetea naturalmente, pero por si acaso).
+       * ──────────────────────────────────────────────────────── */
+      const form = document.querySelector('form');
+      const btnSubmit = document.getElementById('btnSubmit');
+
+      if (form && btnSubmit) {
+        form.addEventListener('submit', function () {
+          // Pequeño delay para no interferir con la validación HTML5
+          setTimeout(function () {
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = `
+              <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              Guardando...`;
+          }, 10);
+        });
+      }
+
+      /**
+       * ── FIX 21 ──────────────────────────────────────────────
+       * Confirmación antes de cambiar estado a BAJA.
+       * ANTES: No existía. Un clic accidental en "Baja" en el select
+       *        y luego "Guardar" daba de baja al socio sin confirmar.
+       *
+       * AHORA: Si el usuario selecciona "baja" y luego intenta enviar,
+       *        aparece un confirm() nativo del navegador.
+       * ──────────────────────────────────────────────────────── */
+      if (form && estadoSelect) {
+        form.addEventListener('submit', function (e) {
+          if (estadoSelect.value === 'baja') {
+            const nombre = document.querySelector('[name="nombre"]');
+            const nombreVal = nombre ? nombre.value : 'este socio';
+            if (!confirm(`¿Está seguro de dar de BAJA a "${nombreVal}"?\n\nEsta acción retirará el medidor actual y generará la baja definitiva.`)) {
+              e.preventDefault();
+              // Re-habilitar botón
+              btnSubmit.disabled = false;
+              btnSubmit.innerHTML = `
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                Guardar`;
+            }
+          }
+        });
+      }
+    });
   </script>
 {% endblock %}

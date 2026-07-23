@@ -3,8 +3,10 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from config import config_map
 from flask_migrate import Migrate
+from flask_wtf import CSRFProtect 
 
 db = SQLAlchemy()
+csrf = CSRFProtect()  # ← NUEVO
 
 login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
@@ -29,7 +31,7 @@ def create_app(config_name: str = 'default') -> Flask:
     # ── Inicializar extensiones ─────────────────────────────
     db.init_app(app)
     login_manager.init_app(app)
-
+    csrf.init_app(app)  # ← NUEVO: habilita csrf_token() global en Jinja2
     # +++ 2. INICIALIZAR MIGRATE (registra comando 'flask db')
     migrate = Migrate(app, db)
 
