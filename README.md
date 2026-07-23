@@ -199,81 +199,119 @@ El sistema implementa un modelo de **Control de Acceso Basado en Roles (RBAC)** 
 
 ```text
 APR_SaaS/
-│
-├── config.py                 # Ajustes por entorno (Dev/Prod, Base de Datos, Keys)
-├── run.py                    # Application Factory (Init Flask, Blueprints y DB)
-├── wsgi.py                   # Entrada servidor WSGI
-├── requirements.txt          # Dependencias
-├── .env.example
-├── README.md
-│
-├── app/
-│   ├── __init__.py
-│   │
-│   ├── models/               # Definiciones ORM (SQLAlchemy)
-│   │   ├── __init__.py
-│   │   ├── user.py           # Módulo 2: Usuarios, Roles y Permisos (0, 1, 2)
-│   │   ├── partner.py        # Módulo 4: Socios
-│   │   ├── meter.py          # Módulo 4: Medidores
-│   │   ├── reading.py        # Módulo 5: Lecturas
-│   │   ├── billing.py        # Módulo 6: Boletas y Tarifas
-│   │   ├── payment.py        # Módulo 8: Pagos y Caja
-│   │   └── technical.py      # Módulo 9: Macro-medición y Cloro
-│   │
-│   ├── services/             # Lógica de Negocio y Dominio Legal
-│   │   ├── __init__.py
-│   │   ├── auth_service.py   # Módulo 2: Decoradores @permission_required y Hash
-│   │   ├── rut_validator.py  # Módulo 2 / 4
-│   │   ├── billing_engine.py # Módulo 6
-│   │   ├── sii_service.py    # Módulo 7
-│   │   ├── siss_reports.py   # Módulo 9
-│   │   └── export_service.py # Módulo 9
-│   │
-│   ├── blueprints/           # Controladores Modularizados
-│   │   ├── __init__.py
-│   │   ├── dashboard.py      # Módulo 1 (Landing pública)
-│   │   ├── auth.py           # Módulo 2 (Login / Permisos / Usuarios)
-│   │   ├── main.py           # Módulo 3 (Panel Privado / Portal Socio)
-│   │   ├── partners.py       # Módulo 4 (Socios / Medidores)
-│   │   ├── readings.py       # Módulo 5 (Toma de lecturas)
-│   │   ├── billing.py        # Módulo 6 (Motor de cálculo y cierre)
-│   │   ├── sii.py            # Módulo 7 (DTE / SII)
-│   │   ├── pos.py            # Módulo 8 (Caja / Punto de Venta)
-│   │   └── reports.py        # Módulo 9 (SISS / Municipalidad)
-│   │
-│   ├── static/
-│   │   ├── css/
-│   │   │   └── input.css     # Fuente Tailwind CSS
-│   │   ├── js/
-│   │   │   ├── rut_val.js    # Formateador/Validador RUT en cliente
-│   │   │   ├── offline_sync.js # LocalStorage y sync offline
-│   │   │   ├── reading_val.js # Alerta consumos anómalos
-│   │   │   ├── pos_print.js  # Formateador impresión ticket
-│   │   │   └── charts.js     # Gráficos Chart.js
-│   │   └── dist/
-│   │       └── output.css    # CSS compilado
-│   │
-│   └── templates/
-│       ├── layouts/
-│       │   ├── base_public.html # Layout público
-│       │   └── base_admin.html  # Layout privado
-│       ├── components/
-│       │   ├── public_navbar.html
-│       │   ├── admin_sidebar.html
-│       │   └── anomaly_modal.html
-│       ├── dashboard/        # Módulo 1
-│       ├── auth/             # Módulo 2
-│       ├── main/             # Módulo 3
-│       ├── partners/         # Módulo 4
-│       ├── readings/         # Módulo 5
-│       ├── billing/          # Módulo 6
-│       ├── pos/              # Módulo 8
-│       └── reports/          # Módulo 9
-│
-├── instance/
-│   └── apr_database.sqlite
-├── migrations/
-└── tests/
-    ├── test_auth.py
-    ├── test_billing.py
-    └── test_rut.py
+|   .env.example
+|   .gitignore
+|   config.py
+|   LICENSE
+|   README.md
+|   requirements.txt
+|   run.py
+|   wsgi.py
+|   
++---app
+|   |   __init__.py
+|   |   
+|   +---blueprints
+|   |   |   auth.py
+|   |   |   dashboard.py
+|   |   |   main.py
+|   |   |   partners.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           auth.cpython-39.pyc
+|   |           dashboard.cpython-39.pyc
+|   |           main.cpython-39.pyc
+|   |           partners.cpython-39.pyc
+|   |           __init__.cpython-39.pyc
+|   |           
+|   +---models
+|   |   |   partner.py
+|   |   |   user.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           partner.cpython-39.pyc
+|   |           user.cpython-39.pyc
+|   |           __init__.cpython-39.pyc
+|   |           
+|   +---services
+|   |   |   auth_service.py
+|   |   |   partner_service.py
+|   |   |   rut_validator.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           auth_service.cpython-39.pyc
+|   |           partner_service.cpython-39.pyc
+|   |           rut_validator.cpython-39.pyc
+|   |           __init__.cpython-39.pyc
+|   |           
+|   +---static
+|   |   +---css
+|   |   |       input.css
+|   |   |       
+|   |   +---dist
+|   |   \---js
+|   |           rut_val.js
+|   |           
+|   +---templates
+|   |   +---auth
+|   |   |       login.html
+|   |   |       recover_password.html
+|   |   |       users_admin.html
+|   |   |       
+|   |   +---billing
+|   |   +---components
+|   |   |       admin_sidebar.html
+|   |   |       public_navbar.html
+|   |   |       
+|   |   +---dashboard
+|   |   |       contacto.html
+|   |   |       directivos.html
+|   |   |       index.html
+|   |   |       info_util.html
+|   |   |       obras.html
+|   |   |       quienes_somos.html
+|   |   |       servicios.html
+|   |   |       
+|   |   +---layouts
+|   |   |       base_admin.html
+|   |   |       base_public.html
+|   |   |       
+|   |   +---main
+|   |   |       admin_dashboard.html
+|   |   |       socio_portal.html
+|   |   |       
+|   |   +---partners
+|   |   |       detail.html
+|   |   |       form.html
+|   |   |       index.html
+|   |   |       meters.html
+|   |   |       sectors.html
+|   |   |       
+|   |   +---pos
+|   |   +---readings
+|   |   \---reports
+|   \---__pycache__
+|           __init__.cpython-39.pyc
+|           
++---contextos
+|       modulo1.md
+|       modulo2.md
+|       modulo3.md
+|       
++---instance
+|       apr_database.sqlite
+|       
++---migrations
+|   |   alembic.ini
+|   |   env.py
+|   |   README
+|   |   script.py.mako
+|   |   
+|   \---versions
++---tests
+\---__pycache__
+        config.cpython-39.pyc
+        wsgi.cpython-39.pyc

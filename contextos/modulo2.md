@@ -326,5 +326,4 @@ app/
 
 ---
 
-> **Fin del contexto Módulo 2**.  
-> Con este documento cualquier IA puede implementar control de acceso consistente, extender la matriz RBAC y mantener la UX de RUT/permison copias al resto del sistema.
+> **Fin del contexto Módulo 2**

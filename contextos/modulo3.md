@@ -425,5 +425,4 @@ grep -r "Pronto" app/templates/main/ app/templates/components/admin_sidebar.html
 
 ---
 
-> **Fin del contexto Módulo 3**.  
-> Este documento permite a cualquier IA continuar el desarrollo del **Módulo 4 (Partners)** entendiendo exactamente cómo el Panel Admin y el Portal Socio consumirán sus datos, cómo se navega hacia él y qué permisos gobiernan su visibilidad.
+> **Fin del contexto Módulo 3**

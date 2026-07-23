@@ -310,5 +310,4 @@ wsgi.py
 
 ---
 
-> **Fin del contexto Módulo 1**.  
-> Con este documento cualquier IA puede continuar el desarrollo manteniendo coherencia visual, arquitectura y convenciones.
+> **Fin del contexto Módulo 1**
