@@ -30,7 +30,8 @@ from app.services.partner_service import (
     change_meter, get_meters_available_for_install,
     get_admin_stats, get_socio_portal_data,
     get_sectores_activos, create_sector, get_sector_by_id,
-    ValidationError, BusinessRuleError, NotFoundError, PartnerServiceError
+    ValidationError, BusinessRuleError, NotFoundError, PartnerServiceError, list_all_meters, install_first_meter, 
+    create_meter as service_create_meter
 )
 from app.services.auth_service import permission_required
 
@@ -363,9 +364,10 @@ def edit(partner_id):
 @permission_required('partners', 1)
 def detail(partner_id):
     partner = get_partner_by_id(partner_id, with_meters=True)
-
-    # FIX 9: Cargar medidores como lista estática para el template
     meters_list = partner.meters.all()
+
+    # Medidores en bodega para el modal de instalación
+    available_meters = get_meters_available_for_install() if not partner.medidor_activo else []
 
     meter_form = MeterChangeForm()
     meter_form.partner_id.data = partner.id
@@ -379,7 +381,8 @@ def detail(partner_id):
     return render_template('partners/detail.html',
                            partner=partner,
                            meter_form=meter_form,
-                           meters_list=meters_list)  # ← nueva variable
+                           meters_list=meters_list,
+                           available_meters=available_meters)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -701,3 +704,232 @@ def _parse_date(val) -> date:
         return date.fromisoformat(str(val))
     except (ValueError, TypeError):
         return date.today()
+
+# ── Formulario para crear medidor en bodega ──
+
+class MeterCreateForm(FlaskForm):
+    """Formulario para registrar un medidor nuevo al stock (bodega)."""
+    numero_serie = StringField('Nº Serie', validators=[DataRequired(), Length(max=30)],
+                               render_kw={"class": "form-control", "placeholder": "Ej: AE-2024-001"})
+    marca = StringField('Marca', validators=[Optional(), Length(max=50)],
+                        render_kw={"class": "form-control", "placeholder": "Ej: Sensus, Arad"})
+    modelo = StringField('Modelo', validators=[Optional(), Length(max=50)],
+                         render_kw={"class": "form-control"})
+    diametro = StringField('Diámetro', validators=[Optional(), Length(max=10)],
+                           render_kw={"class": "form-control", "placeholder": 'Ej: 1/2"'})
+    multiplicador = IntegerField('Multiplicador', validators=[Optional(), NumberRange(min=1, max=1000)],
+                                 default=1, render_kw={"class": "form-control"})
+    observaciones = TextAreaField('Observaciones', validators=[Optional()],
+                                  render_kw={"class": "form-control", "rows": 2})
+
+
+# ── Formulario para instalar primer medidor ──
+
+class MeterInstallForm(FlaskForm):
+    """Formulario modal: instalar medidor en socio sin medidor."""
+    partner_id = HiddenField(validators=[DataRequired()])
+    meter_id = SelectField('Medidor de Bodega', coerce=int, validators=[DataRequired()],
+                           render_kw={"class": "form-select"})
+    lectura_inicial = IntegerField('Lectura Inicial', validators=[DataRequired(), NumberRange(min=0)],
+                                   render_kw={"class": "form-control", "min": 0})
+    fecha_instalacion = DateField('Fecha Instalación', format='%Y-%m-%d',
+                                  validators=[DataRequired()], default=date.today,
+                                  render_kw={"class": "form-control", "type": "date"})
+    observaciones = TextAreaField('Observaciones', validators=[Optional()],
+                                  render_kw={"class": "form-control", "rows": 2})
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        meters = get_meters_available_for_install()
+        self.meter_id.choices = [(0, '-- Seleccionar medidor --')] + [
+            (m.id, f"{m.numero_serie} ({m.marca or 'S/M'} {m.modelo or ''})")
+            for m in meters
+        ]
+
+
+# ── Vista de Inventario de Medidores ──
+
+@bp.route('/meters')
+@login_required
+@permission_required('partners', 1)
+def meters_index():
+    """Página de inventario de medidores."""
+    estados = [(s.value, s.name.capitalize()) for s in MeterStatus]
+    form = MeterCreateForm()
+    return render_template('partners/meters.html', estados=estados, form=form)
+
+
+# ── API DataTable para inventario ──
+
+@bp.route('/api/meters')
+@login_required
+@permission_required('partners', 1)
+def api_meters():
+    """Endpoint JSON paginado para tabla de medidores."""
+    draw = request.args.get('draw', 1, type=int)
+    start = request.args.get('start', 0, type=int)
+    length = request.args.get('length', 25, type=int)
+    search_value = request.args.get('search[value]', '', type=str)
+    estado = request.args.get('estado', '', type=str)
+
+    page = (start // length) + 1 if length else 1
+    per_page = length
+
+    estado_enum = MeterStatus(estado) if estado else None
+
+    try:
+        meters, total = list_all_meters(
+            estado=estado_enum,
+            term=search_value if search_value else None,
+            page=page,
+            per_page=per_page
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error api_meters: {e}")
+        return jsonify({
+            'draw': draw, 'recordsTotal': 0,
+            'recordsFiltered': 0, 'data': [], 'error': str(e)
+        }), 500
+
+    data = []
+    for m in meters:
+        data.append({
+            'id': m.id,
+            'numero_serie': m.numero_serie,
+            'marca': m.marca or '-',
+            'modelo': m.modelo or '-',
+            'diametro': m.diametro or '-',
+            'multiplicador': m.multiplicador,
+            'estado': m.estado.name.capitalize(),
+            'estado_raw': m.estado.value,
+            'es_actual': m.es_actual,
+            'partner_id': m.partner_id,
+            'partner_nombre': m.partner.nombre if m.partner else None,
+            'partner_rut': m.partner.rut if m.partner else None,
+            'fecha_instalacion': m.fecha_instalacion.strftime('%d/%m/%Y') if m.fecha_instalacion else '-',
+            'lectura_instalacion': m.lectura_instalacion,
+            'consumo_acumulado': m.consumo_acumulado_actual,
+        })
+
+    return jsonify({
+        'draw': draw,
+        'recordsTotal': total,
+        'recordsFiltered': total,
+        'data': data
+    })
+
+
+# ── Crear medidor en bodega (AJAX) ──
+
+@bp.route('/meters/create', methods=['POST'])
+@login_required
+@permission_required('partners', 2)
+def meters_create():
+    """Registra un medidor nuevo al stock (bodega)."""
+    form = MeterCreateForm()
+
+    if form.validate_on_submit():
+        try:
+            meter = service_create_meter(
+                data={
+                    'numero_serie': form.numero_serie.data.strip(),
+                    'marca': form.marca.data,
+                    'modelo': form.modelo.data,
+                    'diametro': form.diametro.data,
+                    'multiplicador': form.multiplicador.data or 1,
+                    'observaciones': form.observaciones.data,
+                },
+                user_id=current_user.id
+            )
+
+            # Si es AJAX, devolver JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({
+                    'success': True,
+                    'message': f'Medidor {meter.numero_serie} registrado en bodega.',
+                    'meter': meter.to_dict()
+                })
+
+            flash(f'Medidor {meter.numero_serie} registrado en bodega.', 'success')
+
+        except ValidationError as e:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': e.message, 'field': e.field}), 400
+            flash(f'Error: {e.message}', 'danger')
+        except PartnerServiceError as e:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': e.message}), 400
+            flash(f'Error: {e.message}', 'danger')
+        except Exception as e:
+            current_app.logger.exception("Error creando medidor")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': 'Error interno'}), 500
+            flash('Error interno del servidor.', 'danger')
+
+    else:
+        errors = {f: errs[0] for f, errs in form.errors.items()}
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'error': 'Datos inválidos', 'errors': errors}), 400
+        for field, errs in form.errors.items():
+            flash(f'{field}: {errs[0]}', 'danger')
+
+    return redirect(url_for('partners.meters_index'))
+
+
+# ── Instalar primer medidor en socio (AJAX) ──
+
+@bp.route('/<int:partner_id>/install-meter', methods=['POST'])
+@login_required
+@permission_required('partners', 2)
+def install_meter(partner_id):
+    """Instala primer medidor desde bodega a un socio sin medidor."""
+    partner = get_partner_by_id(partner_id)
+
+    form = MeterInstallForm()
+    form.meter_id.choices = [(0, '-- Seleccionar --')] + [
+        (m.id, f"{m.numero_serie} ({m.marca or 'S/M'})")
+        for m in get_meters_available_for_install()
+    ]
+    form.partner_id.data = partner_id
+
+    if form.validate_on_submit():
+        try:
+            meter = install_first_meter(
+                partner_id=partner_id,
+                meter_id=form.meter_id.data,
+                lectura_inicial=form.lectura_inicial.data,
+                fecha=form.fecha_instalacion.data,
+                user_id=current_user.id,
+                observaciones=form.observaciones.data
+            )
+
+            msg = (f'Medidor {meter.numero_serie} instalado en '
+                   f'{partner.nombre}. Lectura inicial: {meter.lectura_instalacion}.')
+
+            if request.is_json:
+                return jsonify({'success': True, 'message': msg})
+
+            flash(msg, 'success')
+
+        except (ValidationError, BusinessRuleError) as e:
+            if request.is_json:
+                return jsonify({'success': False, 'error': e.message}), 400
+            flash(f'Error: {e.message}', 'danger')
+        except PartnerServiceError as e:
+            if request.is_json:
+                return jsonify({'success': False, 'error': e.message}), 400
+            flash(f'Error: {e.message}', 'danger')
+        except Exception as e:
+            current_app.logger.exception("Error instalando medidor")
+            if request.is_json:
+                return jsonify({'success': False, 'error': 'Error interno'}), 500
+            flash('Error interno del servidor.', 'danger')
+
+    else:
+        errors = {f: errs[0] for f, errs in form.errors.items()}
+        if request.is_json:
+            return jsonify({'success': False, 'error': 'Datos inválidos', 'errors': errors}), 400
+        for field, errs in form.errors.items():
+            flash(f'{field}: {errs[0]}', 'danger')
+
+    return redirect(url_for('partners.detail', partner_id=partner_id))

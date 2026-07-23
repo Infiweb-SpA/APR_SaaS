@@ -1,0 +1,415 @@
+{% extends 'layouts/base_admin.html' %}
+
+{% block title %}Inventario de Medidores – APR{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.tailwindcss.min.css">
+  <style>
+    /* Reutilizamos los mismos estilos DataTables de index.html */
+    .dataTables_wrapper .dataTables_length select,
+    .dataTables_wrapper .dataTables_filter input {
+      border: 1px solid #e8e4de; border-radius: 0.5rem;
+      padding: 0.5rem 0.75rem; font-size: 0.875rem; background: white;
+    }
+    .dataTables_wrapper .dataTables_length select:focus,
+    .dataTables_wrapper .dataTables_filter input:focus {
+      outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13,148,136,0.15);
+    }
+    .dataTables_wrapper .dataTables_length label,
+    .dataTables_wrapper .dataTables_filter label { font-size: 0.875rem; color: #78716c; }
+    .dataTables_wrapper .dataTables_info { font-size: 0.8125rem; color: #78716c; padding-top: 0.75rem; }
+    .dataTables_wrapper .dataTables_paginate { padding-top: 0.75rem; }
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+      padding: 0.375rem 0.75rem; margin: 0 2px; font-size: 0.8125rem; font-weight: 500;
+      color: #1c1917; background: white; border: 1px solid #e8e4de; border-radius: 0.5rem;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover { background: #f0fdfa; border-color: #0d9488; color: #0d9488; }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #134e4a; border-color: #134e4a; color: white; }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.disabled { opacity: 0.4; pointer-events: none; }
+    table.dataTable thead th {
+      background: #eef5fb; color: #071e30; font-size: 0.75rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.05em; padding: 0.75rem 1rem;
+      border-bottom: 2px solid #d6d3d1; white-space: nowrap;
+    }
+    table.dataTable tbody td { padding: 0.625rem 1rem; font-size: 0.875rem; border-bottom: 1px solid #f5f3f0; }
+    table.dataTable tbody tr:hover { background: rgba(7,30,48,0.03); }
+
+    .badge-meter {
+      display: inline-flex; align-items: center; gap: 0.375rem;
+      padding: 0.25rem 0.75rem; border-radius: 9999px;
+      font-size: 0.75rem; font-weight: 600; white-space: nowrap;
+    }
+    .badge-bodega { background: #dbeafe; color: #1e40af; }
+    .badge-instalado { background: #ccfbf1; color: #115e59; }
+    .badge-retirado { background: #f5f5f4; color: #57534e; }
+    .badge-reparacion { background: #fef3c7; color: #92400e; }
+    .badge-baja { background: #fee2e2; color: #991b1b; }
+    .badge-meter .dot { width: 6px; height: 6px; border-radius: 50%; }
+    .badge-bodega .dot { background: #3b82f6; }
+    .badge-instalado .dot { background: #14b8a6; }
+    .badge-retirado .dot { background: #a8a29e; }
+    .badge-reparacion .dot { background: #f59e0b; }
+    .badge-baja .dot { background: #ef4444; }
+
+    .es-actual {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      padding: 0.125rem 0.5rem; border-radius: 0.25rem;
+      font-size: 0.6875rem; font-weight: 600;
+      background: #ccfbf1; color: #115e59;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  {# ── Header ────────────────────────────────────────────── #}
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-heading text-navy-900">Inventario de Medidores</h1>
+      <p class="text-stone-500 mt-1">Stock, instalaciones y ciclo de vida de medidores.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      {% if current_user.has_permission('partners', 2) %}
+      <button type="button" id="btnNewMeter"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-navy-600 text-white rounded-lg hover:bg-navy-700 transition-colors font-medium text-sm">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        Registrar Medidor
+      </button>
+      {% endif %}
+      <a href="{{ url_for('partners.index') }}"
+         class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-stone-600 bg-white border border-sand-300 rounded-lg hover:bg-sand-100 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h17.73"/></svg>
+        Volver a Socios
+      </a>
+    </div>
+  </div>
+
+  {# ── Filtros ────────────────────────────────────────────── #}
+  <div class="bg-white rounded-xl border border-sand-200 p-4 shadow-sm">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div>
+        <label class="block text-xs font-medium text-stone-500 mb-1">Buscar (Nº Serie, Marca, Modelo)</label>
+        <input type="text" id="searchMeters"
+               class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm"
+               placeholder="Escribe para filtrar...">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-stone-500 mb-1">Estado</label>
+        <select id="estadoMeters"
+                class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm bg-white">
+          <option value="">Todos los estados</option>
+          {% for e in estados %}
+          <option value="{{ e[0] }}">{{ e[1] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex items-end">
+        <button type="button" id="btnClearMeters"
+                class="w-full px-4 py-2 text-sm font-medium text-stone-600 bg-white border border-sand-300 rounded-lg hover:bg-sand-100 transition-colors">
+          Limpiar filtros
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {# ── Tabla ──────────────────────────────────────────────── #}
+  <div class="bg-white rounded-xl border border-sand-200 shadow-sm overflow-hidden">
+    <div class="p-1">
+      <table id="tablaMeters" class="w-full" style="width:100%">
+        <thead>
+          <tr>
+            <th>Nº Serie</th>
+            <th>Marca</th>
+            <th>Modelo</th>
+            <th>Estado</th>
+            <th>Asignado a</th>
+            <th>Instalado</th>
+            <th>Lect. Inicial</th>
+            <th>Consumo Acum.</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── Resumen ────────────────────────────────────────────── #}
+  <div class="text-sm text-stone-500">
+    <span id="metersInfo"></span>
+  </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════
+   MODAL: Registrar Medidor Nuevo
+   ═══════════════════════════════════════════════════════════ #}
+<div id="meterModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+  <div class="fixed inset-0 bg-black/40" id="meterOverlay"></div>
+  <div class="flex min-h-full items-center justify-center p-4 relative">
+    <div class="w-full max-w-lg bg-white rounded-xl shadow-xl border border-sand-200 relative z-10">
+      <div class="flex items-center justify-between p-4 border-b border-sand-200">
+        <h3 class="font-heading text-navy-900">Registrar Medidor en Bodega</h3>
+        <button type="button" id="btnCloseMeterModal" class="text-stone-400 hover:text-stone-600">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <form id="meterForm" class="p-4 space-y-4">
+        {{ form.csrf_token }}
+
+        <div>
+          <label for="mNumeroSerie" class="block text-sm font-medium text-stone-700 mb-1">Nº Serie <span class="text-red-500">*</span></label>
+          <input type="text" name="numero_serie" id="mNumeroSerie" required maxlength="30"
+                 class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm font-mono"
+                 placeholder="Ej: AE-2024-001" style="text-transform: uppercase;">
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label for="mMarca" class="block text-sm font-medium text-stone-700 mb-1">Marca</label>
+            <input type="text" name="marca" id="mMarca" maxlength="50"
+                   class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm"
+                   placeholder="Sensus, Arad...">
+          </div>
+          <div>
+            <label for="mModelo" class="block text-sm font-medium text-stone-700 mb-1">Modelo</label>
+            <input type="text" name="modelo" id="mModelo" maxlength="50"
+                   class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label for="mDiametro" class="block text-sm font-medium text-stone-700 mb-1">Diámetro</label>
+            <input type="text" name="diametro" id="mDiametro" maxlength="10"
+                   class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm"
+                   placeholder='1/2"'>
+          </div>
+          <div>
+            <label for="mMultiplicador" class="block text-sm font-medium text-stone-700 mb-1">Multiplicador</label>
+            <input type="number" name="multiplicador" id="mMultiplicador" min="1" max="1000" value="1"
+                   class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm">
+          </div>
+        </div>
+
+        <div>
+          <label for="mObs" class="block text-sm font-medium text-stone-700 mb-1">Observaciones</label>
+          <textarea name="observaciones" id="mObs" rows="2"
+                    class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm"></textarea>
+        </div>
+
+        <div id="meterModalError" class="p-3 bg-red-50 border border-red-200 rounded-lg" style="display: none;">
+          <p id="meterModalErrorMsg" class="text-sm text-red-700"></p>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" id="btnCancelMeter"
+                  class="flex-1 px-4 py-2 bg-white text-navy-700 border border-sand-300 rounded-lg hover:bg-navy-50 transition-colors font-medium">
+            Cancelar
+          </button>
+          <button type="submit" id="btnSaveMeter"
+                  class="flex-1 px-4 py-2 bg-navy-600 text-white rounded-lg hover:bg-navy-700 transition-colors font-medium disabled:opacity-50">
+            Registrar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+
+  <script>
+    function showToast(msg, type) {
+      type = type || 'info';
+      var container = document.getElementById('toast-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'fixed bottom-4 right-4 z-[60] flex flex-col gap-2';
+        document.body.appendChild(container);
+      }
+      var el = document.createElement('div');
+      var colors = { success: 'bg-teal-600 text-white', error: 'bg-red-600 text-white', info: 'bg-navy-600 text-white' };
+      el.className = 'flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-sm ' + (colors[type] || colors.info);
+      el.style.animation = 'slide-in 0.3s ease-out';
+      el.innerHTML = '<span>' + msg + '</span>';
+      container.appendChild(el);
+      setTimeout(function () {
+        el.style.transition = 'opacity 0.3s ease';
+        el.style.opacity = '0';
+        setTimeout(function () { el.remove(); }, 300);
+      }, 4000);
+    }
+
+    $(function () {
+      // ── Badge de estado ──
+      function badgeMeter(estado, raw) {
+        return '<span class="badge-meter badge-' + raw + '"><span class="dot"></span>' + estado + '</span>';
+      }
+
+      // ── DataTable ──
+      var table = $('#tablaMeters').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+          url: '{{ url_for("partners.api_meters") }}',
+          type: 'GET',
+          data: function (d) {
+            d.estado = $('#estadoMeters').val();
+          }
+        },
+        columns: [
+          { data: 'numero_serie', className: 'font-mono text-sm font-medium whitespace-nowrap' },
+          { data: 'marca', className: 'text-sm' },
+          { data: 'modelo', className: 'text-sm' },
+          {
+            data: null,
+            orderable: false,
+            render: function (row) {
+              var html = badgeMeter(row.estado, row.estado_raw);
+              if (row.es_actual) {
+                html += ' <span class="es-actual">Actual</span>';
+              }
+              return html;
+            }
+          },
+          {
+            data: null,
+            render: function (row) {
+              if (row.partner_nombre) {
+                var url = '{{ url_for("partners.detail", partner_id=0) }}'.replace('/0', '/' + row.partner_id);
+                return '<a href="' + url + '" class="text-navy-600 hover:text-navy-800 font-medium text-sm">' + row.partner_nombre + '</a>';
+              }
+              return '<span class="text-stone-400">Bodega</span>';
+            }
+          },
+          { data: 'fecha_instalacion', className: 'text-sm text-stone-600 whitespace-nowrap' },
+          { data: 'lectura_instalacion', className: 'font-mono text-sm text-right' },
+          {
+            data: 'consumo_acumulado',
+            className: 'font-mono text-sm text-right font-medium text-navy-700',
+            render: function (data) {
+              return data > 0 ? data + ' m³' : '-';
+            }
+          }
+        ],
+        order: [[0, 'desc']],
+        pageLength: 25,
+        lengthMenu: [[10, 25, 50], [10, 25, 50]],
+        language: {
+          url: '//cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json',
+          processing: 'Cargando medidores...'
+        },
+        scrollX: true,
+        drawCallback: function () {
+          var info = this.api().page.info();
+          $('#metersInfo').text(
+            'Mostrando ' + (info.recordsDisplay > 0 ? (info.start + 1) : 0) +
+            '-' + info.end + ' de ' + info.recordsDisplay + ' medidores'
+          );
+        }
+      });
+
+      // ── Filtros ──
+      var searchTimer;
+      $('#searchMeters').on('keyup', function () {
+        clearTimeout(searchTimer);
+        var val = this.value;
+        searchTimer = setTimeout(function () { table.search(val).draw(); }, 350);
+      });
+      $('#estadoMeters').on('change', function () { table.ajax.reload(); });
+      $('#btnClearMeters').on('click', function () {
+        $('#searchMeters').val('');
+        $('#estadoMeters').val('');
+        table.search('').ajax.reload();
+      });
+
+      // ── Modal: Registrar Medidor ──
+      var modal = document.getElementById('meterModal');
+      var overlay = document.getElementById('meterOverlay');
+      var form = document.getElementById('meterForm');
+      var errorDiv = document.getElementById('meterModalError');
+      var errorMsg = document.getElementById('meterModalErrorMsg');
+      var btnSave = document.getElementById('btnSaveMeter');
+      var submitting = false;
+
+      function openModal() {
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        setTimeout(function () { document.getElementById('mNumeroSerie').focus(); }, 100);
+      }
+      function closeModal() {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+        form.reset();
+        errorDiv.style.display = 'none';
+      }
+      function showError(msg) {
+        errorMsg.textContent = msg;
+        errorDiv.style.display = 'block';
+      }
+
+      document.getElementById('btnNewMeter').addEventListener('click', openModal);
+      document.getElementById('btnCloseMeterModal').addEventListener('click', closeModal);
+      document.getElementById('btnCancelMeter').addEventListener('click', closeModal);
+      overlay.addEventListener('click', closeModal);
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && modal.style.display === 'block') closeModal();
+      });
+
+      // ── Submit: Crear medidor ──
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (submitting) return;
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+
+        submitting = true;
+        btnSave.disabled = true;
+        btnSave.textContent = 'Registrando...';
+        errorDiv.style.display = 'none';
+
+        fetch('{{ url_for("partners.meters_create") }}', {
+          method: 'POST',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          body: new FormData(form)
+        })
+        .then(function (res) {
+          return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+        })
+        .then(function (result) {
+          if (result.ok && result.data.success) {
+            closeModal();
+            showToast(result.data.message, 'success');
+            table.ajax.reload();
+          } else {
+            var err = result.data.error || 'Error al registrar.';
+            if (result.data.errors) {
+              var parts = [];
+              for (var k in result.data.errors) parts.push(k + ': ' + result.data.errors[k]);
+              err += ' — ' + parts.join(', ');
+            }
+            showError(err);
+          }
+        })
+        .catch(function () {
+          showError('Error de conexión.');
+        })
+        .finally(function () {
+          submitting = false;
+          btnSave.disabled = false;
+          btnSave.textContent = 'Registrar';
+        });
+      });
+    });
+  </script>
+
+  <style>
+    @keyframes slide-in {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+{% endblock %}

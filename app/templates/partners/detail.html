@@ -3,40 +3,61 @@
 {% block title %}{{ partner.nombre }} – Ficha Socio{% endblock %}
 
 {% block extra_head %}
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.tailwindcss.min.css">
   <style>
-    .detail-card { @apply bg-white rounded-xl border border-sand-200 shadow-sm; }
-    .badge-status { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium; }
-    .badge-activo { @apply bg-teal-100 text-teal-800; }
-    .badge-cortado { @apply bg-amber-100 text-amber-800; }
-    .badge-baja { @apply bg-red-100 text-red-800; }
-    .badge-sin_conexion { @apply bg-stone-100 text-stone-800; }
-    .badge-instalado { @apply bg-teal-100 text-teal-800; }
-    .badge-retirado { @apply bg-stone-100 text-stone-800; }
-    .badge-bodega { @apply bg-blue-100 text-blue-800; }
-    .badge-reparacion { @apply bg-amber-100 text-amber-800; }
-    .meter-badge { @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-navy-50 text-navy-700 border border-navy-100; }
+    .detail-card {
+      background: white;
+      border-radius: 0.75rem;
+      border: 1px solid #e8e4de;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.625rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-activo { background: #ccfbf1; color: #115e59; }
+    .badge-cortado { background: #fef3c7; color: #92400e; }
+    .badge-baja { background: #fee2e2; color: #991b1b; }
+    .badge-sin_conexion { background: #f5f5f4; color: #57534e; }
+    .badge-instalado { background: #ccfbf1; color: #115e59; }
+    .badge-retirado { background: #f5f5f4; color: #57534e; }
+    .badge-bodega { background: #dbeafe; color: #1e40af; }
+    .badge-reparacion { background: #fef3c7; color: #92400e; }
+    .badge-baja-meter { background: #fee2e2; color: #991b1b; }
+    .meter-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      font-family: monospace;
+      background: #eef5fb;
+      color: #071e30;
+      border: 1px solid #cce0f2;
+    }
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 50;
+      background: rgba(0,0,0,0.4);
+      display: none;
+      overflow-y: auto;
+    }
+    .modal-overlay.active { display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    @keyframes slide-in {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
   </style>
 {% endblock %}
 
 {% block content %}
-{# ── FIX 8 ───────────────────────────────────────────────────
-   ANTES: El x-data de Alpine estaba SOLO en el div del modal.
-          Los botones de arriba (@click="openChangeMeter = true")
-          estaban FUERA de ese scope → openChangeMeter no existía.
-          Además, el modal usaba "open" como variable, no "openChangeMeter".
-          Resultado: el botón nunca abría el modal.
+{% set lectura_inicial_val = (partner.medidor_activo.ultima_lectura_valor or partner.medidor_activo.lectura_instalacion) if partner.medidor_activo else 0 %}
 
-   AHORA: Todo el contenido vive dentro de UN SOLO x-data.
-          La función meterChangeComponent() encapsula estado + lógica.
-          Botones y modal comparten la misma variable "openChangeMeter".
-
-   ¿Por qué? Alpine.js crea scopes independientes por cada x-data.
-   Si un botón está fuera del x-data del modal, no puede acceder
-   a sus variables reactivas. La solución es unificar el scope.
-   ─────────────────────────────────────────────────────────── #}
-<div class="max-w-6xl mx-auto space-y-6" x-data="meterChangeComponent()" x-init="init()">
+<div class="max-w-6xl mx-auto space-y-6">
 
   {# ── Header ────────────────────────────────────────────── #}
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -56,11 +77,19 @@
         Editar
       </a>
       {% endif %}
-      {% if partner.medidor_activo and current_user.has_permission('partners', 2) %}
-      <button @click="openChangeMeter = true" class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium flex items-center gap-1">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-        Cambio Medidor
-      </button>
+
+      {% if current_user.has_permission('partners', 2) %}
+        {% if partner.medidor_activo %}
+        <button id="btn-open-change" class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium flex items-center gap-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Cambio Medidor
+        </button>
+        {% else %}
+        <button id="btn-open-install" class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium flex items-center gap-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          Instalar Medidor
+        </button>
+        {% endif %}
       {% endif %}
     </div>
   </div>
@@ -68,22 +97,22 @@
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
     {# ═══════════════════════════════════════════════════════
-       COLUMNA IZQUIERDA: Ficha Principal
+       COLUMNA IZQUIERDA
        ═══════════════════════════════════════════════════════ #}
     <div class="lg:col-span-2 space-y-6">
 
-      {# Estado + Medidor Actual #}
+      {# Estado + Info #}
       <div class="detail-card p-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 pb-4 border-b border-sand-200">
           <div>
             <span class="text-xs font-medium text-stone-500 uppercase tracking-wider">Estado Actual</span>
-            <div class="mt-1 flex items-center gap-3">
+            <div class="mt-1 flex items-center gap-3 flex-wrap">
               <span class="badge-status badge-{{ partner.estado.value }}">{{ partner.estado.name.capitalize() }}</span>
               {% if partner.medidor_activo %}
               <span class="meter-badge">{{ partner.medidor_activo.numero_serie }}</span>
               <span class="text-xs text-stone-500">Lectura actual: <strong class="text-stone-900">{{ partner.medidor_activo.ultima_lectura_valor or partner.medidor_activo.lectura_instalacion }}</strong></span>
               {% else %}
-              <span class="text-xs text-stone-400">Sin medidor instalado</span>
+              <span class="text-xs text-stone-400 italic">Sin medidor instalado</span>
               {% endif %}
             </div>
           </div>
@@ -109,23 +138,7 @@
         </div>
       </div>
 
-      {# ── FIX 9 ─────────────────────────────────────────────
-         ANTES: {% for m in partner.meters|sort(...) %}
-                partner.meters es lazy='dynamic' → retorna Query, NO lista.
-                El filtro |sort de Jinja necesita un iterable (lista/tupla).
-                Resultado: TypeError al renderizar la página.
-
-         AHORA: Se usa meters_list (variable pasada desde el blueprint).
-                El blueprint hace partner.meters.all() y lo pasa como lista.
-                El order_by='desc(Meter.fecha_instalacion)' de la relación
-                ya ordena, así que no necesitamos |sort en Jinja.
-
-         ¿Por qué? lazy='dynamic' es intencional en el modelo para
-         consultas filtradas (partner.meters.filter_by(es_actual=True)).
-         Pero para el template necesitamos una lista estática. La
-         responsabilidad de cargar los datos es del blueprint (capa
-         controlador), NO del template.
-         ─────────────────────────────────────────────────────── #}
+      {# Historial de Medidores #}
       <div class="detail-card p-6">
         <h3 class="text-lg font-heading text-navy-900 mb-4">Historial de Medidores</h3>
         {% if meters_list %}
@@ -153,7 +166,7 @@
                 <td class="py-3 text-right font-mono">{{ m.lectura_instalacion or '-' }}</td>
                 <td class="py-3 text-right font-mono">{{ m.lectura_retiro or '-' }}</td>
                 <td class="py-3 text-right font-medium text-navy-700">
-                  {% if m.lectura_retiro is not none and m.lectura_instalacion is not none %}{{ m.lectura_retiro - m.lectura_instalacion }}{% else %}-{% endif %}
+                  {% if m.lectura_retiro is not none and m.lectura_instalacion is not none %}{{ m.lectura_retiro - m.lectura_instalacion }} m³{% else %}-{% endif %}
                 </td>
                 <td class="py-3">
                   <span class="badge-status badge-{{ m.estado.value }}">{{ m.estado.name.capitalize() }}</span>
@@ -167,11 +180,16 @@
         <div class="text-center py-10">
           <svg class="w-12 h-12 text-stone-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           <p class="text-stone-500">No hay medidores registrados para este socio.</p>
+          {% if not partner.medidor_activo and current_user.has_permission('partners', 2) %}
+          <button id="btn-open-install-2" class="mt-3 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-lg hover:bg-teal-100 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            Instalar primer medidor
+          </button>
+          {% endif %}
         </div>
         {% endif %}
       </div>
 
-      {# Observaciones #}
       {% if partner.observaciones %}
       <div class="detail-card p-6">
         <h4 class="text-sm font-medium text-stone-500 mb-2">Observaciones</h4>
@@ -182,7 +200,7 @@
     </div>
 
     {# ═══════════════════════════════════════════════════════
-       COLUMNA DERECHA: Accesos rápidos / Mapa / Audit
+       COLUMNA DERECHA
        ═══════════════════════════════════════════════════════ #}
     <div class="space-y-6">
 
@@ -191,39 +209,55 @@
         <div class="space-y-2">
           {% if current_user.has_permission('partners', 2) %}
           <a href="{{ url_for('partners.edit', partner_id=partner.id) }}" class="flex items-center gap-3 p-3 rounded-lg hover:bg-navy-50 transition-colors">
-            <div class="w-10 h-10 rounded-lg bg-navy-100 flex items-center justify-center"><svg class="w-5 h-5 text-navy-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></div>
+            <div class="w-10 h-10 rounded-lg bg-navy-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-navy-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+            </div>
             <div><p class="font-medium text-sm">Editar Socio</p><p class="text-xs text-stone-500">Modificar datos, estado, sector</p></div>
           </a>
           {% endif %}
 
-          {% if partner.medidor_activo and current_user.has_permission('partners', 2) %}
-          <button @click="openChangeMeter = true" class="flex items-center gap-3 p-3 rounded-lg hover:bg-amber-50 transition-colors w-full text-left">
-            <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center"><svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></div>
-            <div><p class="font-medium text-sm">Cambio de Medidor</p><p class="text-xs text-stone-500">Retirar actual e instalar nuevo</p></div>
-          </button>
+          {% if current_user.has_permission('partners', 2) %}
+            {% if partner.medidor_activo %}
+            <button id="btn-open-change-2" class="flex items-center gap-3 p-3 rounded-lg hover:bg-amber-50 transition-colors w-full text-left">
+              <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              </div>
+              <div><p class="font-medium text-sm">Cambio de Medidor</p><p class="text-xs text-stone-500">Retirar actual e instalar nuevo</p></div>
+            </button>
+            {% else %}
+            <button id="btn-open-install-3" class="flex items-center gap-3 p-3 rounded-lg hover:bg-teal-50 transition-colors w-full text-left">
+              <div class="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center">
+                <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+              </div>
+              <div><p class="font-medium text-sm">Instalar Medidor</p><p class="text-xs text-stone-500">Asignar medidor de bodega a este socio</p></div>
+            </button>
+            {% endif %}
           {% endif %}
 
-          <a href="#" class="flex items-center gap-3 p-3 rounded-lg hover:bg-teal-50 transition-colors opacity-60 cursor-not-allowed" title="Próximamente: Módulo 6">
-            <div class="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center"><svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+          <div class="flex items-center gap-3 p-3 rounded-lg opacity-60 cursor-not-allowed">
+            <div class="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
             <div class="flex-1">
               <p class="font-medium text-sm">Generar Boleta</p>
               <p class="text-xs text-stone-500">Facturación módulo 6</p>
             </div>
             <span class="text-xs bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full">Pronto</span>
-          </a>
+          </div>
 
-          <a href="#" class="flex items-center gap-3 p-3 rounded-lg hover:bg-stone-50 transition-colors opacity-60 cursor-not-allowed" title="Próximamente: Módulo 5">
-            <div class="w-10 h-10 rounded-lg bg-stone-100 flex items-center justify-center"><svg class="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
+          <div class="flex items-center gap-3 p-3 rounded-lg opacity-60 cursor-not-allowed">
+            <div class="w-10 h-10 rounded-lg bg-stone-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            </div>
             <div class="flex-1">
               <p class="font-medium text-sm">Historial Consumos</p>
               <p class="text-xs text-stone-500">Lecturas y gráficos</p>
             </div>
             <span class="text-xs bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full">Pronto</span>
-          </a>
+          </div>
         </div>
       </div>
 
-      {# Mapa si tiene coords #}
       {% if partner.latitud and partner.longitud %}
       <div class="detail-card p-6">
         <h4 class="font-heading text-navy-900 mb-3">Ubicación GPS</h4>
@@ -236,23 +270,6 @@
       </div>
       {% endif %}
 
-      {# ── FIX 7 ─────────────────────────────────────────────
-         ANTES: partner.creator.nombre / partner.updater.nombre
-                → El modelo define las relaciones como:
-                  created_by = relationship('User', foreign_keys=[created_by_id])
-                  updated_by = relationship('User', foreign_keys=[updated_by_id])
-                → "creator" y "updater" no existen como atributos.
-                → Resultado: UndefinedError / AttributeError al renderizar.
-
-         AHORA: partner.created_by.nombre / partner.updated_by.nombre
-                → Coinciden exactamente con los nombres de relación del modelo.
-
-         ¿Por qué? SQLAlchemy crea atributos Python con el nombre del
-         primer parámetro de relationship(). El modelo dice:
-           created_by = relationship('User', ...)
-         Por lo tanto en Jinja se accede como partner.created_by, NO
-         como partner.creator. El nombre debe coincidir exactamente.
-         ─────────────────────────────────────────────────────── #}
       <div class="detail-card p-6">
         <h4 class="font-heading text-navy-900 mb-3">Auditoría</h4>
         <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -272,163 +289,175 @@
 
   {# ═══════════════════════════════════════════════════════
      MODAL CAMBIO DE MEDIDOR
+     ═══════════════════════════════════════════════════════ #}
+  <div id="modal-change" class="modal-overlay">
+    <div class="w-full max-w-md bg-white rounded-xl shadow-xl border border-sand-200 relative" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between p-4 border-b border-sand-200">
+        <h3 class="font-heading text-navy-900">Cambio de Medidor</h3>
+        <button class="btn-close-modal-change text-stone-400 hover:text-stone-600">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
 
-     ── FIX 10 ──────────────────────────────────────────────
-     ANTES: X-CSRFToken: '{{ meter_form.csrf_token._value() }}'
-            → Accede un atributo interno (_value) del objeto csrf_token.
-            → Funciona pero es frágil: si WTForms cambia internals, rompe.
+      <form id="form-change" class="p-4 space-y-4">
+        <input type="hidden" name="partner_id" value="{{ partner.id }}">
 
-     AHORA: X-CSRFToken: '{{ csrf_token() }}'
-            → Usa la función global Jinja2 que Flask-WTF inyecta.
-            → Es la API pública y estable.
-
-     ¿Por qué? csrf_token() es la forma documentada por Flask-WTF
-     para obtener el token como string. _value() es un método interno
-     del campo HiddenField que no está en la API pública.
-     ───────────────────────────────────────────────────────────
-
-     ── FIX 11 (en x-init) ───────────────────────────────────
-     ANTES: lectura_salida: {{ partner.medidor_activo.ultima_lectura_valor
-              or partner.medidor_activo.lectura_instalacion
-              if partner.medidor_activo else 0 }}
-
-            → Jinja evalúa como:
-              A or (B if C else D)
-              Si partner.medidor_activo es None, intenta acceder
-              .ultima_lectura_valor sobre None → UndefinedError.
-
-     AHORA: Usamos {% set %} para calcular el valor ANTES del x-data,
-            con paréntesis correctos:
-              (A or B) if C else D
-
-     ¿Por qué? El operador `if` en Jinja tiene MENOR precedencia que `or`.
-     Sin paréntesis, `or` se evalúa primero y puede intentar acceder
-     atributos de None. Los paréntesis fuerzan la evaluación correcta.
-     ─────────────────────────────────────────────────────────── #}
-  {% set lectura_inicial = (partner.medidor_activo.ultima_lectura_valor or partner.medidor_activo.lectura_instalacion) if partner.medidor_activo else 0 %}
-
-  <div x-show="openChangeMeter"
-       x-transition:enter="transition ease-out duration-200"
-       x-transition:enter-start="opacity-0"
-       x-transition:leave="transition ease-in duration-150"
-       x-transition:leave-start="opacity-100"
-       class="fixed inset-0 z-50 overflow-y-auto"
-       @keydown.escape.window="openChangeMeter = false">
-
-    {# Overlay #}
-    <div class="fixed inset-0 bg-black/40" @click="openChangeMeter = false"></div>
-
-    <div class="flex min-h-full items-center justify-center p-4 relative">
-      <div x-show="openChangeMeter"
-           x-transition:enter="transition ease-out duration-200"
-           x-transition:enter-start="opacity-0 scale-95"
-           x-transition:leave="transition ease-in duration-150"
-           x-transition:leave-start="opacity-100 scale-100"
-           class="w-full max-w-md bg-white rounded-xl shadow-xl border border-sand-200"
-           @click.outside="openChangeMeter = false">
-
-        <div class="flex items-center justify-between p-4 border-b border-sand-200">
-          <h3 class="font-heading text-navy-900">Cambio de Medidor</h3>
-          <button @click="openChangeMeter = false" class="text-stone-400 hover:text-stone-600">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
+        <div>
+          <label class="block text-sm font-medium text-stone-700 mb-1">Medidor Actual</label>
+          <p class="text-sm font-mono text-navy-700 bg-navy-50 px-3 py-2 rounded-lg">
+            {{ partner.medidor_activo.numero_serie if partner.medidor_activo else 'N/A' }}
+          </p>
         </div>
 
-        <form @submit.prevent="submitMeterChange()" class="p-4 space-y-4">
-          <input type="hidden" x-model="formData.partner_id">
+        <div>
+          <label class="block text-sm font-medium text-stone-700 mb-1">
+            Nuevo Medidor <span class="text-red-500">*</span>
+          </label>
+          <select name="new_meter_serie" id="change-select-meter"
+                  class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm bg-white"
+                  required>
+            <option value="">Cargando medidores...</option>
+          </select>
+          <p id="change-no-meters" class="text-xs text-amber-600 mt-1" style="display:none;">
+            No hay medidores disponibles en bodega.
+          </p>
+        </div>
 
+        <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-stone-700 mb-1">Medidor Actual</label>
-            <p class="text-sm font-mono text-navy-700 bg-navy-50 px-3 py-2 rounded-lg">
-              {{ partner.medidor_activo.numero_serie if partner.medidor_activo else 'N/A' }}
-            </p>
-          </div>
-
-          <div>
-            <label for="new_meter_serie" class="block text-sm font-medium text-stone-700 mb-1">
-              Nuevo Medidor <span class="text-red-500">*</span>
+            <label class="block text-sm font-medium text-stone-700 mb-1">
+              Lectura Salida (Antiguo) <span class="text-red-500">*</span>
             </label>
-            <select id="new_meter_serie"
-                    x-model="formData.new_meter_serie"
-                    class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm"
-                    required>
-              <option value="">Seleccionar...</option>
-              <template x-for="m in meters" :key="m.id">
-                <option :value="m.serie" x-text="m.text"></option>
-              </template>
-            </select>
-            <p x-show="meters.length === 0" class="text-xs text-amber-600 mt-1">
-              No hay medidores disponibles en bodega.
-            </p>
+            <input type="number" name="lectura_salida"
+                   value="{{ lectura_inicial_val }}"
+                   min="0"
+                   class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm font-mono"
+                   required>
           </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label for="lectura_salida" class="block text-sm font-medium text-stone-700 mb-1">
-                Lectura Salida (Antiguo) <span class="text-red-500">*</span>
-              </label>
-              <input type="number" id="lectura_salida"
-                     x-model.number="formData.lectura_salida"
-                     min="0"
-                     class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm font-mono"
-                     required>
-            </div>
-            <div>
-              <label for="lectura_entrada" class="block text-sm font-medium text-stone-700 mb-1">
-                Lectura Entrada (Nuevo) <span class="text-red-500">*</span>
-              </label>
-              <input type="number" id="lectura_entrada"
-                     x-model.number="formData.lectura_entrada"
-                     min="0"
-                     class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm font-mono"
-                     required>
-            </div>
-          </div>
-
           <div>
-            <label for="fecha_cambio" class="block text-sm font-medium text-stone-700 mb-1">
-              Fecha Cambio <span class="text-red-500">*</span>
+            <label class="block text-sm font-medium text-stone-700 mb-1">
+              Lectura Entrada (Nuevo) <span class="text-red-500">*</span>
             </label>
-            <input type="date" id="fecha_cambio"
-                   x-model="formData.fecha_cambio"
+            <input type="number" name="lectura_entrada" value="0"
+                   min="0"
+                   class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm font-mono"
+                   required>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-stone-700 mb-1">
+            Fecha Cambio <span class="text-red-500">*</span>
+          </label>
+          <input type="date" name="fecha_cambio"
+                 class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm"
+                 required>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-stone-700 mb-1">Observaciones</label>
+          <textarea name="observaciones" rows="2"
+                    class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm"></textarea>
+        </div>
+
+        <div id="change-error" class="p-3 bg-red-50 border border-red-200 rounded-lg" style="display:none;">
+          <p id="change-error-msg" class="text-sm text-red-700"></p>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" class="btn-close-modal-change flex-1 px-4 py-2 bg-white text-navy-700 border border-sand-300 rounded-lg hover:bg-navy-50 transition-colors font-medium">
+            Cancelar
+          </button>
+          <button type="submit" id="btn-submit-change"
+                  class="flex-1 px-4 py-2 bg-navy-600 text-white rounded-lg hover:bg-navy-700 transition-colors font-medium">
+            Confirmar Cambio
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {# ═══════════════════════════════════════════════════════
+     MODAL INSTALAR MEDIDOR
+     ═══════════════════════════════════════════════════════ #}
+  <div id="modal-install" class="modal-overlay">
+    <div class="w-full max-w-md bg-white rounded-xl shadow-xl border border-sand-200 relative" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between p-4 border-b border-sand-200">
+        <h3 class="font-heading text-navy-900">Instalar Medidor</h3>
+        <button class="btn-close-modal-install text-stone-400 hover:text-stone-600">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <form id="form-install" class="p-4 space-y-4">
+        <input type="hidden" name="partner_id" value="{{ partner.id }}">
+
+        <div>
+          <label class="block text-sm font-medium text-stone-700 mb-1">Socio</label>
+          <p class="text-sm font-medium text-navy-700 bg-navy-50 px-3 py-2 rounded-lg">
+            {{ partner.nombre }} ({{ partner.rut }})
+          </p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-stone-700 mb-1">
+            Medidor de Bodega <span class="text-red-500">*</span>
+          </label>
+          <select name="meter_id" id="install-select-meter"
+                  class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm bg-white"
+                  required>
+            <option value="">Seleccionar medidor...</option>
+            {% for m in available_meters %}
+            <option value="{{ m.id }}">{{ m.numero_serie }} ({{ m.marca or 'S/M' }} {{ m.modelo or '' }})</option>
+            {% endfor %}
+          </select>
+          {% if not available_meters %}
+          <p class="text-xs text-amber-600 mt-1">
+            No hay medidores en bodega.
+            <a href="{{ url_for('partners.meters_index') }}" class="underline font-medium">Registrar uno nuevo</a>.
+          </p>
+          {% endif %}
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-stone-700 mb-1">
+              Lectura Inicial <span class="text-red-500">*</span>
+            </label>
+            <input type="number" name="lectura_inicial" value="0" min="0"
+                   class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm font-mono"
+                   required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-stone-700 mb-1">
+              Fecha Instalación <span class="text-red-500">*</span>
+            </label>
+            <input type="date" name="fecha_instalacion"
                    class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm"
                    required>
           </div>
+        </div>
 
-          <div>
-            <label for="observaciones" class="block text-sm font-medium text-stone-700 mb-1">Observaciones</label>
-            <textarea id="observaciones"
-                      x-model="formData.observaciones"
-                      rows="2"
-                      class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm"></textarea>
-          </div>
+        <div>
+          <label class="block text-sm font-medium text-stone-700 mb-1">Observaciones</label>
+          <textarea name="observaciones" rows="2"
+                    class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm"></textarea>
+        </div>
 
-          {# Errores de servidor #}
-          <div x-show="serverError" class="p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p class="text-sm text-red-700" x-text="serverError"></p>
-            <template x-if="serverErrors">
-              <ul class="mt-1 text-xs text-red-600 space-y-0.5">
-                <template x-for="(val, key) in serverErrors" :key="key">
-                  <li x-text="`${key}: ${val}`"></li>
-                </template>
-              </ul>
-            </template>
-          </div>
+        <div id="install-error" class="p-3 bg-red-50 border border-red-200 rounded-lg" style="display:none;">
+          <p id="install-error-msg" class="text-sm text-red-700"></p>
+        </div>
 
-          <div class="flex gap-3 pt-2">
-            <button type="button" @click="openChangeMeter = false"
-                    class="flex-1 px-4 py-2 bg-white text-navy-700 border border-sand-300 rounded-lg hover:bg-navy-50 transition-colors font-medium">
-              Cancelar
-            </button>
-            <button type="submit"
-                    :disabled="loading || meters.length === 0"
-                    class="flex-1 px-4 py-2 bg-navy-600 text-white rounded-lg hover:bg-navy-700 transition-colors font-medium disabled:opacity-50"
-                    x-text="loading ? 'Guardando...' : 'Confirmar Cambio'">
-            </button>
-          </div>
-        </form>
-
-      </div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" class="btn-close-modal-install flex-1 px-4 py-2 bg-white text-navy-700 border border-sand-300 rounded-lg hover:bg-navy-50 transition-colors font-medium">
+            Cancelar
+          </button>
+          <button type="submit" id="btn-submit-install"
+                  class="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium">
+            Confirmar Instalación
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -436,146 +465,230 @@
 {% endblock %}
 
 {% block extra_scripts %}
-  <script>
-    /**
-     * meterChangeComponent()
-     * Componente Alpine que encapsula TODO el estado del modal de cambio de medidor.
-     * Se registra como función global antes de que Alpine lo necesite.
-     *
-     * FIX 8: Antes, el x-data estaba aislado en el div del modal.
-     *        Los botones fuera de ese scope no podían acceder a "open".
-     *        Ahora todo vive en un solo componente.
-     */
-    function meterChangeComponent() {
-      return {
-        // Estado del modal
-        openChangeMeter: false,
-        loading: false,
-        serverError: null,
-        serverErrors: null,
+<script>
+(function () {
+  'use strict';
 
-        // Datos del formulario
-        formData: {
-          partner_id: '{{ partner.id }}',
-          new_meter_serie: '',
-          lectura_salida: {{ lectura_inicial }},
-          lectura_entrada: 0,
-          fecha_cambio: new Date().toLocaleDateString('fr-CA'), // YYYY-MM-DD local
-          observaciones: ''
-        },
+  // ── Variables desde Jinja2 (seguras) ──
+  var CSRF_TOKEN = '{{ meter_form.csrf_token._value() }}';
+  var API_METERS_URL = '{{ url_for("partners.api_meters_available") }}';
+  var CHANGE_METER_URL = '{{ url_for("partners.change_meter_route") }}';
+  var INSTALL_METER_URL = '{{ url_for("partners.install_meter", partner_id=partner.id) }}';
 
-        // Medidores en bodega (cargados via API)
-        meters: [],
+  // ── Helper: hoy en formato YYYY-MM-DD ──
+  function todayISO() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1);
+    var day = String(d.getDate());
+    if (m.length < 2) m = '0' + m;
+    if (day.length < 2) day = '0' + day;
+    return d.getFullYear() + '-' + m + '-' + day;
+  }
 
-        /**
-         * init() - Se ejecuta cuando Alpine monta el componente.
-         * Carga los medidores disponibles en bodega vía API.
-         */
-        async init() {
-          try {
-            const res = await fetch('{{ url_for("partners.api_meters_available") }}');
-            if (!res.ok) throw new Error('Error cargando medidores');
-            const data = await res.json();
-            this.meters = data.results || [];
-          } catch (e) {
-            console.error('Error cargando medidores disponibles:', e);
-            this.meters = [];
-          }
-        },
-
-        /**
-         * submitMeterChange() - Envía el cambio de medidor al backend.
-         * FIX 10: Usa csrf_token() (API pública) en vez de _value() (interno).
-         * El blueprint ahora acepta JSON (FIX 4 del archivo partners.py).
-         */
-        async submitMeterChange() {
-          this.loading = true;
-          this.serverError = null;
-          this.serverErrors = null;
-
-          try {
-            const res = await fetch('{{ url_for("partners.change_meter_route") }}', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ meter_form.csrf_token._value() }}'
-              },
-              body: JSON.stringify(this.formData)
-            });
-
-            const data = await res.json();
-
-            if (data.success) {
-              this.openChangeMeter = false;
-              showToast(data.message, 'success');
-              setTimeout(() => location.reload(), 1200);
-            } else {
-              this.serverError = data.error || 'Error al procesar el cambio.';
-              this.serverErrors = data.errors || null;
-            }
-          } catch (e) {
-            console.error('Error en submitMeterChange:', e);
-            this.serverError = 'Error de conexión. Intente nuevamente.';
-          } finally {
-            this.loading = false;
-          }
-        }
-      };
+  // ── Toast ──
+  function showToast(msg, type) {
+    type = type || 'info';
+    var container = document.getElementById('toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toast-container';
+      container.className = 'fixed bottom-4 right-4 z-[60] flex flex-col gap-2';
+      document.body.appendChild(container);
     }
+    var el = document.createElement('div');
+    var colors = { success: 'bg-teal-600 text-white', error: 'bg-red-600 text-white', info: 'bg-navy-600 text-white' };
+    el.className = 'flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg text-sm max-w-sm ' + (colors[type] || colors.info);
+    el.style.animation = 'slide-in 0.3s ease-out';
+    el.textContent = msg;
+    container.appendChild(el);
+    setTimeout(function () {
+      el.style.transition = 'opacity 0.3s ease';
+      el.style.opacity = '0';
+      setTimeout(function () { el.remove(); }, 300);
+    }, 5000);
+  }
 
-    /**
-     * showToast() - Sistema de notificaciones toast.
-     * Crea un toast temporal en la esquina inferior derecha.
-     */
-    function showToast(msg, type = 'info', errors = null) {
-      const container = document.getElementById('toast-container') || (() => {
-        const c = document.createElement('div');
-        c.id = 'toast-container';
-        c.className = 'fixed bottom-4 right-4 z-[60] flex flex-col gap-2';
-        document.body.appendChild(c);
-        return c;
-      })();
+  // ── Modal open/close helpers ──
+  function openModal(id) {
+    document.getElementById(id).classList.add('active');
+  }
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+  }
 
-      const el = document.createElement('div');
-      const colors = {
-        success: 'bg-teal-600 text-white',
-        error: 'bg-red-600 text-white',
-        warning: 'bg-amber-600 text-white',
-        info: 'bg-navy-600 text-white'
-      };
+  // ── Abrir modales ──
+  var btnsChange = document.querySelectorAll('#btn-open-change, #btn-open-change-2');
+  var btnsInstall = document.querySelectorAll('#btn-open-install, #btn-open-install-2, #btn-open-install-3');
 
-      el.className = `flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg text-sm max-w-sm animate-slide-in ${colors[type] || colors.info}`;
+  btnsChange.forEach(function (btn) {
+    btn.addEventListener('click', function () { openModal('modal-change'); });
+  });
+  btnsInstall.forEach(function (btn) {
+    btn.addEventListener('click', function () { openModal('modal-install'); });
+  });
 
-      const iconSvg = type === 'success'
-        ? '<svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>'
-        : '<svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>';
+  // ── Cerrar modales ──
+  document.querySelectorAll('.btn-close-modal-change').forEach(function (btn) {
+    btn.addEventListener('click', function () { closeModal('modal-change'); });
+  });
+  document.querySelectorAll('.btn-close-modal-install').forEach(function (btn) {
+    btn.addEventListener('click', function () { closeModal('modal-install'); });
+  });
 
-      let html = `<div class="flex items-start gap-3">${iconSvg}<div><span>${msg}</span>`;
+  // Cerrar al hacer click fuera
+  document.getElementById('modal-change').addEventListener('click', function (e) {
+    if (e.target === this) closeModal('modal-change');
+  });
+  document.getElementById('modal-install').addEventListener('click', function (e) {
+    if (e.target === this) closeModal('modal-install');
+  });
 
-      if (errors) {
-        html += '<ul class="mt-1 text-xs opacity-90 space-y-0.5">';
-        Object.entries(errors).forEach(([k, v]) => {
-          html += `<li>${k}: ${v}</li>`;
+  // Cerrar con Escape
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      closeModal('modal-change');
+      closeModal('modal-install');
+    }
+  });
+
+  // ── Cargar medidores disponibles (para modal Cambio) ──
+  var changeSelect = document.getElementById('change-select-meter');
+  var changeNoMeters = document.getElementById('change-no-meters');
+
+  fetch(API_METERS_URL)
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      var meters = data.results || [];
+      changeSelect.innerHTML = '<option value="">Seleccionar...</option>';
+      if (meters.length === 0) {
+        changeNoMeters.style.display = 'block';
+      } else {
+        meters.forEach(function (m) {
+          var opt = document.createElement('option');
+          opt.value = m.serie;
+          opt.textContent = m.text;
+          changeSelect.appendChild(opt);
         });
-        html += '</ul>';
       }
+    })
+    .catch(function (err) {
+      console.error('Error cargando medidores:', err);
+      changeSelect.innerHTML = '<option value="">Error cargando medidores</option>';
+    });
 
-      html += '</div></div>';
-      el.innerHTML = html;
+  // ── Poner fecha de hoy ──
+  var today = todayISO();
+  document.querySelectorAll('input[type="date"]').forEach(function (el) {
+    if (!el.value) el.value = today;
+  });
 
-      container.appendChild(el);
-      setTimeout(() => {
-        el.classList.add('opacity-0', 'transition-opacity', 'duration-300');
-        setTimeout(() => el.remove(), 300);
-      }, 5000);
+  // ── Submit Cambio de Medidor ──
+  document.getElementById('form-change').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var form = e.target;
+    var btn = document.getElementById('btn-submit-change');
+    var errorDiv = document.getElementById('change-error');
+    var errorMsg = document.getElementById('change-error-msg');
+
+    errorDiv.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+
+    var payload = {
+      partner_id: form.partner_id.value,
+      new_meter_serie: form.new_meter_serie.value,
+      lectura_salida: parseFloat(form.lectura_salida.value) || 0,
+      lectura_entrada: parseFloat(form.lectura_entrada.value) || 0,
+      fecha_cambio: form.fecha_cambio.value,
+      observaciones: form.observaciones.value
+    };
+
+    fetch(CHANGE_METER_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      },
+      body: JSON.stringify(payload)
+    })
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      if (data.success) {
+        closeModal('modal-change');
+        showToast(data.message || 'Medidor cambiado exitosamente.', 'success');
+        setTimeout(function () { location.reload(); }, 1200);
+      } else {
+        errorMsg.textContent = data.error || 'Error al procesar el cambio.';
+        errorDiv.style.display = 'block';
+      }
+    })
+    .catch(function () {
+      errorMsg.textContent = 'Error de conexión. Intente nuevamente.';
+      errorDiv.style.display = 'block';
+    })
+    .finally(function () {
+      btn.disabled = false;
+      btn.textContent = 'Confirmar Cambio';
+    });
+  });
+
+  // ── Submit Instalar Medidor ──
+  document.getElementById('form-install').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var form = e.target;
+    var btn = document.getElementById('btn-submit-install');
+    var errorDiv = document.getElementById('install-error');
+    var errorMsg = document.getElementById('install-error-msg');
+
+    errorDiv.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Instalando...';
+
+    var payload = {
+      partner_id: parseInt(form.partner_id.value),
+      meter_id: parseInt(form.meter_id.value),
+      lectura_inicial: parseFloat(form.lectura_inicial.value) || 0,
+      fecha_instalacion: form.fecha_instalacion.value,
+      observaciones: form.observaciones.value
+    };
+
+    if (!payload.meter_id) {
+      errorMsg.textContent = 'Debe seleccionar un medidor.';
+      errorDiv.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Confirmar Instalación';
+      return;
     }
-  </script>
 
-  <style>
-    @keyframes slide-in {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-    .animate-slide-in { animation: slide-in 0.3s ease-out; }
-  </style>
+    fetch(INSTALL_METER_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF_TOKEN
+      },
+      body: JSON.stringify(payload)
+    })
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      if (data.success) {
+        closeModal('modal-install');
+        showToast(data.message || 'Medidor instalado exitosamente.', 'success');
+        setTimeout(function () { location.reload(); }, 1200);
+      } else {
+        errorMsg.textContent = data.error || 'Error al instalar el medidor.';
+        errorDiv.style.display = 'block';
+      }
+    })
+    .catch(function () {
+      errorMsg.textContent = 'Error de conexión. Intente nuevamente.';
+      errorDiv.style.display = 'block';
+    })
+    .finally(function () {
+      btn.disabled = false;
+      btn.textContent = 'Confirmar Instalación';
+    });
+  });
+
+})();
+</script>
 {% endblock %}

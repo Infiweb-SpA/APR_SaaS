@@ -323,23 +323,20 @@ class Meter(db.Model):
     # ── MÉTODOS DE CICLO DE VIDA (Llamados desde Service) ───
 
     def instalar(self, partner: Partner, lectura_inicial: int, fecha=None, user_id=None, obs=None):
-        """Instala este medidor en un socio. Desactiva el anterior."""
-        from app.services.partner_service import _desactivar_medidor_actual  # Import local para evitar circular
-        
-        # 1. Desactivar medidor actual del socio (si existe)
-        if partner.medidor_activo:
-            _desactivar_medidor_actual(partner.medidor_activo, lectura_inicial - 1, fecha, user_id, "Cambio de medidor")
-        
-        # 2. Configurar este medidor
+        """Instala este medidor en un socio."""
+        # NOTA: La capa de servicio (install_first_meter / change_meter) se encarga
+        # de validar que NO haya medidor activo, o de retirarlo ANTES de llamar aquí.
+        # Por eso no necesitamos desactivar nada desde el modelo.
+
         self.partner_id = partner.id
         self.estado = MeterStatus.INSTALADO
         self.es_actual = True
         self.fecha_instalacion = fecha or datetime.utcnow().date()
         self.lectura_instalacion = lectura_inicial
         self.observaciones_instalacion = obs
-        self.created_by_id = user_id
+        self.updated_by_id = user_id
         partner.updated_by_id = user_id
-
+        
     def retirar(self, lectura_retiro: int, fecha=None, user_id=None, obs=None):
         """Retira medidor de terreno (cambio, baja, reparación)."""
         if not self.es_actual:

@@ -546,3 +546,101 @@ def _empty_socio_data(user: User) -> dict:
         'saldo_pendiente': 0, 'ultima_boleta': None,
         'consumo_actual': 0, 'consumo_promedio': 0,
     }
+
+# ══════════════════════════════════════════════════════════════
+# INVENTARIO DE MEDIDORES - STOCK Y PRIMERA INSTALACIÓN
+# ══════════════════════════════════════════════════════════════
+
+def list_all_meters(
+    estado: MeterStatus = None,
+    partner_id: int = None,
+    term: str = None,
+    page: int = 1,
+    per_page: int = 25
+) -> Tuple[List[Meter], int]:
+    """
+    Listado paginado de TODOS los medidores con filtros.
+    Usado por la vista de inventario/stock.
+    """
+    query = _get_meter_query()
+
+    if estado:
+        query = query.filter(Meter.estado == estado)
+
+    if partner_id:
+        query = query.filter(Meter.partner_id == partner_id)
+
+    if term:
+        term_clean = f"%{term.strip()}%"
+        query = query.filter(or_(
+            Meter.numero_serie.ilike(term_clean),
+            Meter.marca.ilike(term_clean),
+            Meter.modelo.ilike(term_clean),
+        ))
+
+    query = query.order_by(desc(Meter.created_at))
+
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    return pagination.items, pagination.total
+
+
+def install_first_meter(
+    partner_id: int,
+    meter_id: int,
+    lectura_inicial: int,
+    fecha: date,
+    user_id: int,
+    observaciones: str = None
+) -> Meter:
+    """
+    Instala un medidor desde BODEGA en un socio que NO tiene
+    medidor actual. Usado para la primera conexión.
+
+    Reglas de negocio:
+    - El socio NO debe tener medidor activo (medidor_activo is None)
+    - El medidor debe estar en estado BODEGA
+    - Si el socio está en SIN_CONEXION, cambia a ACTIVO automáticamente
+    """
+    partner = get_partner_by_id(partner_id)
+    meter = get_meter_by_id(meter_id)
+
+    # Validaciones
+    if partner.medidor_activo:
+        raise BusinessRuleError(
+            "El socio ya tiene un medidor instalado. "
+            "Use 'Cambio de Medidor' en su lugar."
+        )
+
+    if meter.estado != MeterStatus.BODEGA:
+        raise BusinessRuleError(
+            f"El medidor {meter.numero_serie} no está disponible "
+            f"(Estado actual: {meter.estado.name})."
+        )
+
+    if meter.partner_id is not None:
+        raise BusinessRuleError(
+            f"El medidor {meter.numero_serie} ya pertenece a otro socio."
+        )
+
+    if lectura_inicial < 0:
+        raise ValidationError(
+            "La lectura inicial no puede ser negativa.",
+            field='lectura_inicial'
+        )
+
+    # Instalar (usa el método del modelo)
+    meter.instalar(
+        partner=partner,
+        lectura_inicial=lectura_inicial,
+        fecha=fecha,
+        user_id=user_id,
+        obs=observaciones
+    )
+
+    # Cambiar estado del socio si estaba SIN_CONEXION
+    if partner.estado == PartnerStatus.SIN_CONEXION:
+        partner.estado = PartnerStatus.ACTIVO
+        partner.updated_by_id = user_id
+
+    db.session.commit()
+    return meter
