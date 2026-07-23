@@ -2,13 +2,13 @@
 """
 Capa de Servicio - Lógica de Negocio para Catastro (Socios, Medidores, Sectores).
 Orquesta transacciones, validaciones cruzadas y reglas de negocio complejas.
+Versión corregida: helpers de tipado, validación RUT robusta, transacciones atómicas.
 """
 
 from datetime import date, datetime
 from typing import Optional, List, Tuple, Dict, Any
 from sqlalchemy import or_, func, desc, asc
 from sqlalchemy.orm import Query, joinedload
-
 from app import db
 from app.models.partner import Partner, Meter, Sector, PartnerStatus, MeterStatus
 from app.models.user import User
@@ -44,22 +44,59 @@ class NotFoundError(PartnerServiceError):
 
 
 # ══════════════════════════════════════════════════════════════
-# HELPERS PRIVADOS
+# HELPERS PRIVADOS DE TIPADO Y VALIDACIÓN
 # ══════════════════════════════════════════════════════════════
+
+def _to_float(val) -> Optional[float]:
+    """Convierte a float de forma segura. Retorna None si vacío o inválido."""
+    if val in (None, '', 'None'):
+        return None
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return None
+
+
+def _to_int(val) -> Optional[int]:
+    """Convierte a int de forma segura. Retorna None si vacío o inválido."""
+    if val in (None, '', 'None'):
+        return None
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return None
+
+
+def _to_date(val) -> date:
+    """Convierte a date (ISO 'YYYY-MM-DD' o 'DD/MM/YYYY'). Default: hoy."""
+    if not val or val in ('', 'None'):
+        return date.today()
+    try:
+        if '/' in val:
+            # Formato DD/MM/YYYY
+            day, month, year = map(int, val.split('/'))
+            return date(year, month, day)
+        # Formato ISO YYYY-MM-DD
+        return date.fromisoformat(val)
+    except (ValueError, TypeError):
+        return date.today()
+
 
 def _get_partner_query() -> Query:
     """Query base con eager loading estándar para evitar N+1."""
     return Partner.query.options(
         joinedload(Partner.sector_rel),
         joinedload(Partner.user),
-        joinedload(Partner.meters).joinedload(Meter.partner)
+        # joinedload(Partner.meters).joinedload(Meter.partner)  # Descomentar si se necesitan medidores siempre
     )
+
 
 def _get_meter_query() -> Query:
     return Meter.query.options(joinedload(Meter.partner))
 
+
 def _validate_unique_rut(rut: str, exclude_id: int = None) -> str:
-    """Normaliza, valida DV y chequea unicidad en BD."""
+    """Normaliza, valida DV y chequea unicidad en BD. Retorna RUT formateado."""
     cleaned = clean_rut(rut)
     if not validate_rut(cleaned):
         raise ValidationError("El RUT ingresado no es válido (dígito verificador incorrecto)", field='rut')
@@ -73,6 +110,7 @@ def _validate_unique_rut(rut: str, exclude_id: int = None) -> str:
         raise ValidationError(f"El RUT {formatted} ya está registrado en otro socio", field='rut')
     
     return formatted
+
 
 def _validate_unique_meter_serie(serie: str, exclude_id: int = None) -> str:
     serie_clean = serie.strip().upper()
@@ -91,11 +129,13 @@ def _validate_unique_meter_serie(serie: str, exclude_id: int = None) -> str:
 def get_sectores_activos() -> List[Sector]:
     return Sector.query.filter_by(activo=True).order_by(Sector.orden_lectura, Sector.nombre).all()
 
+
 def get_sector_by_id(sector_id: int) -> Sector:
     sector = Sector.query.get(sector_id)
     if not sector:
         raise NotFoundError("Sector", sector_id)
     return sector
+
 
 def create_sector(data: dict, user_id: int) -> Sector:
     sector = Sector(
@@ -121,9 +161,11 @@ def get_partner_by_id(partner_id: int, with_meters: bool = True) -> Partner:
         raise NotFoundError("Socio", partner_id)
     return partner
 
+
 def get_partner_by_rut(rut: str) -> Optional[Partner]:
     formatted = format_rut(clean_rut(rut))
     return Partner.query.filter_by(rut=formatted).first()
+
 
 def search_partners(
     term: str = None, 
@@ -158,30 +200,39 @@ def search_partners(
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     return pagination.items, pagination.total
 
+
 def create_partner(data: dict, user_id: int) -> Partner:
-    """Crea socio + opcionalmente vincula User existente."""
+    """
+    Crea un nuevo socio con validaciones robustas.
+    data: dict plano (request.form.to_dict() o similar)
+    """
+    from sqlalchemy.exc import IntegrityError
+    
+    # 1. Validar y normalizar RUT (único)
     rut = _validate_unique_rut(data['rut'])
     
-    sector_id = data.get('sector_id')
+    # 2. Validar sector si se proporciona
+    sector_id = _to_int(data.get('sector_id'))
     if sector_id:
-        get_sector_by_id(sector_id)
-    
+        get_sector_by_id(sector_id)  # Lanza NotFoundError si no existe
+
+    # 3. Construir objeto Partner usando helpers seguros
     partner = Partner(
         rut=rut,
-        nombre=data['nombre'].strip(),
+        nombre=data.get('nombre', '').strip(),
         nombre_fantasia=data.get('nombre_fantasia', '').strip() or None,
-        direccion=data['direccion'].strip(),
+        direccion=data.get('direccion', '').strip(),
         numero=data.get('numero', '').strip() or None,
         complemento=data.get('complemento', '').strip() or None,
         sector_id=sector_id,
-        latitud=data.get('latitud', type=float),
-        longitud=data.get('longitud', type=float),
+        latitud=_to_float(data.get('latitud')),
+        longitud=_to_float(data.get('longitud')),
         referencia_ubicacion=data.get('referencia_ubicacion', '').strip() or None,
         telefono=data.get('telefono', '').strip() or None,
         celular=data.get('celular', '').strip() or None,
         email=data.get('email', '').strip().lower() or None,
         estado=PartnerStatus(data.get('estado', 'activo')),
-        fecha_ingreso=data.get('fecha_ingreso', type=date.fromisoformat) or date.today(),
+        fecha_ingreso=_to_date(data.get('fecha_ingreso')),
         tipo_conexion=data.get('tipo_conexion', 'domiciliaria'),
         diametro_empalme=data.get('diametro_empalme'),
         observaciones=data.get('observaciones', '').strip() or None,
@@ -189,30 +240,45 @@ def create_partner(data: dict, user_id: int) -> Partner:
         updated_by_id=user_id,
     )
     
-    user_id_link = data.get('user_id', type=int)
+    # 4. Vincular User existente (opcional)
+    user_id_link = _to_int(data.get('user_id'))
     if user_id_link:
         user = User.query.get(user_id_link)
         if not user:
             raise ValidationError("Usuario a vincular no existe", field='user_id')
-        if user.partner_profile:
+        # user.partner_profile es dynamic relationship -> .first() para check existencia
+        if user.partner_profile.first():
             raise ValidationError("Ese usuario ya tiene un socio asociado", field='user_id')
+        if not user.is_active:
+            raise ValidationError("Usuario no está activo", field='user_id')
         partner.user_id = user.id
     
+    # 5. Persistir
     db.session.add(partner)
-    db.session.commit()
-    return partner
+    try:
+        db.session.commit()
+        return partner
+    except IntegrityError as e:
+        db.session.rollback()
+        # Log real en producción: current_app.logger.error(...)
+        raise ValidationError("Error de integridad en base de datos (RUT duplicado?)")
+    except Exception as e:
+        db.session.rollback()
+        raise
+
 
 def update_partner(partner_id: int, data: dict, user_id: int) -> Partner:
     partner = get_partner_by_id(partner_id, with_meters=False)
     
+    # Cambio de RUT (validar unicidad)
     if 'rut' in data and data['rut'] != partner.rut:
         partner.rut = _validate_unique_rut(data['rut'], exclude_id=partner_id)
     
+    # Campos actualizables directos (strings -> strip or None)
     updatable_fields = [
         'nombre', 'nombre_fantasia', 'direccion', 'numero', 'complemento',
         'referencia_ubicacion', 'telefono', 'celular', 'email',
         'tipo_conexion', 'diametro_empalme', 'observaciones',
-        'latitud', 'longitud'
     ]
     for field in updatable_fields:
         if field in data:
@@ -221,21 +287,31 @@ def update_partner(partner_id: int, data: dict, user_id: int) -> Partner:
                 val = val.strip() or None
             setattr(partner, field, val)
     
-    if 'sector_id' in data:
-        partner.sector_id = data['sector_id'] if data['sector_id'] else None
-        if partner.sector_id:
-            get_sector_by_id(partner.sector_id)
+    # Coordenadas (float seguro)
+    if 'latitud' in data:
+        partner.latitud = _to_float(data['latitud'])
+    if 'longitud' in data:
+        partner.longitud = _to_float(data['longitud'])
     
+    # Sector (validar existencia)
+    if 'sector_id' in data:
+        new_sector_id = _to_int(data['sector_id'])
+        partner.sector_id = new_sector_id
+        if new_sector_id:
+            get_sector_by_id(new_sector_id)
+    
+    # Cambio de Estado (reglas de negocio)
     if 'estado' in data:
         new_status = PartnerStatus(data['estado'])
-        _apply_status_change(partner, new_status, user_id, data)  # ✅ PASA 'data'
+        _apply_status_change(partner, new_status, user_id, data)
     
     partner.updated_by_id = user_id
     db.session.commit()
     return partner
 
+
 def _apply_status_change(partner: Partner, new_status: PartnerStatus, user_id: int, data: dict):
-    """Reglas de transición de estado."""
+    """Reglas de transición de estado con side-effects."""
     current = partner.estado
     
     if current == new_status:
@@ -270,12 +346,14 @@ def get_meter_by_id(meter_id: int) -> Meter:
         raise NotFoundError("Medidor", meter_id)
     return meter
 
+
 def get_meters_available_for_install() -> List[Meter]:
     """Medidores en bodega listos para instalar."""
     return Meter.query.filter(
         Meter.estado.in_([MeterStatus.BODEGA]),
         Meter.partner_id.is_(None)
     ).order_by(Meter.marca, Meter.numero_serie).all()
+
 
 def create_meter(data: dict, user_id: int) -> Meter:
     """Ingresa medidor a bodega (stock)."""
@@ -296,6 +374,7 @@ def create_meter(data: dict, user_id: int) -> Meter:
     db.session.add(meter)
     db.session.commit()
     return meter
+
 
 def update_meter(meter_id: int, data: dict, user_id: int) -> Meter:
     meter = get_meter_by_id(meter_id)
@@ -424,15 +503,16 @@ def get_admin_stats() -> Dict[str, Any]:
         'consumo_promedio': 0,
     }
 
+
 def get_socio_portal_data(user: User) -> Dict[str, Any]:
-    if not user.partner_profile:
+    if not user.partner_profile.first():
         return {
             'socio': _empty_socio_data(user),
             'consumption_history': [],
             'recent_bills': [],
         }
     
-    partner = user.partner_profile
+    partner = user.partner_profile.first()
     meter = partner.medidor_activo
     
     socio_data = {
@@ -456,6 +536,7 @@ def get_socio_portal_data(user: User) -> Dict[str, Any]:
         'consumption_history': [],
         'recent_bills': [],
     }
+
 
 def _empty_socio_data(user: User) -> dict:
     return {

@@ -90,9 +90,9 @@ class PartnerForm(FlaskForm):
         self.sector_id.choices = [(0, '-- Sin Sector --')] + [(s.id, s.nombre) for s in get_sectores_activos()]
         # Usuarios sin socio asociado y rol 'socio' (o cualquiera que pueda entrar al portal)
         users_free = User.query.filter(
-            User.partner_profile.is_(None),
-            User.activo == True
-        ).order_by(User.nombre).all()
+            User.partner_profile.any(),
+            User.is_active == True
+        ).order_by(User.nombre)
         self.user_id.choices = [(0, '-- Sin vincular --')] + [(u.id, f"{u.nombre} ({u.rut})") for u in users_free]
 
     def validate_rut(self, field):
@@ -166,7 +166,7 @@ bp = Blueprint('partners', __name__, url_prefix='/partners')
 
 @bp.route('/')
 @login_required
-@permission_required('partners_view')
+@permission_required('partners', 1)
 def index():
     """Vista principal: Tabla de Socios (DataTables server-side)."""
     sectores = get_sectores_activos()
@@ -176,7 +176,7 @@ def index():
 
 @bp.route('/api/list')
 @login_required
-@permission_required('partners_view')
+@permission_required('partners', 1)
 def api_list():
     """Endpoint DataTables: JSON paginado/filtrado."""
     # Parámetros DataTables
@@ -247,7 +247,7 @@ def api_list():
 
 @bp.route('/create', methods=['GET', 'POST'])
 @login_required
-@permission_required('partners_create')
+@permission_required('partners', 2)
 def create():
     form = PartnerForm()
     if form.validate_on_submit():
@@ -275,7 +275,7 @@ def create():
 
 @bp.route('/<int:partner_id>/edit', methods=['GET', 'POST'])
 @login_required
-@permission_required('partners_edit')
+@permission_required('partners', 2)
 def edit(partner_id):
     partner = get_partner_by_id(partner_id, with_meters=False)
     form = PartnerForm(obj=partner)
@@ -310,7 +310,7 @@ def edit(partner_id):
 
 @bp.route('/<int:partner_id>')
 @login_required
-@permission_required('partners_view')
+@permission_required('partners', 1)
 def detail(partner_id):
     partner = get_partner_by_id(partner_id, with_meters=True)
     # Formulario vacío para modal cambio medidor (se llena via JS)
@@ -330,7 +330,7 @@ def detail(partner_id):
 
 @bp.route('/change-meter', methods=['POST'])
 @login_required
-@permission_required('partners_edit') # Mismo permiso que editar socio
+@permission_required('partners', 2)
 def change_meter_route():
     form = MeterChangeForm()
     # Re-cargar choices por validación CSRF/Select
@@ -379,7 +379,7 @@ def change_meter_route():
 
 @bp.route('/api/search')
 @login_required
-@permission_required('partners_view')
+@permission_required('partners', 1)
 def api_search():
     """Autocomplete para selectores (ej. en Módulo Lecturas/Facturación)."""
     q = request.args.get('q', '', type=str)
@@ -403,7 +403,7 @@ def api_search():
 
 @bp.route('/api/meters/available')
 @login_required
-@permission_required('partners_view')
+@permission_required('partners', 1)
 def api_meters_available():
     """Medidores en bodega para modal cambio."""
     meters = get_meters_available_for_install()
@@ -425,16 +425,16 @@ def api_meters_available():
 
 @bp.route('/sectors')
 @login_required
-@permission_required('partners_view') # O permiso específico 'sectors_view'
+@permission_required('partners', 1) # O permiso específico 'sectors_view'
 def sectors_index():
     sectors = Sector.query.order_by(Sector.orden_lectura, Sector.nombre).all()
     form = SectorForm()
     return render_template('partners/sectors.html', sectors=sectors, form=form)
 
 
-@bp.route('/sectors/create', methods=['POST'])
+@bp.route('/create', methods=['GET', 'POST'])
 @login_required
-@permission_required('partners_edit') # Admin/Operador
+@permission_required('partners', 2)
 def sectors_create():
     form = SectorForm()
     if form.validate_on_submit():
@@ -457,7 +457,7 @@ def sectors_create():
 
 @bp.route('/sectors/<int:sector_id>/edit', methods=['POST'])
 @login_required
-@permission_required('partners_edit')
+@permission_required('partners', 2)
 def sectors_edit(sector_id):
     sector = get_sector_by_id(sector_id)
     form = SectorForm(obj=sector)
@@ -474,7 +474,7 @@ def sectors_edit(sector_id):
 
 @bp.route('/sectors/<int:sector_id>/toggle', methods=['POST'])
 @login_required
-@permission_required('partners_edit')
+@permission_required('partners', 2)
 def sectors_toggle(sector_id):
     sector = get_sector_by_id(sector_id)
     sector.activo = not sector.activo

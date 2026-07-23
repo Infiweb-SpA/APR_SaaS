@@ -228,7 +228,7 @@
         try {
           const res = await fetch('{{ url_for("partners.change_meter_route") }}', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ meter_form.csrf_token._value() }}' },
             body: JSON.stringify(this.formData)
           });
           const data = await res.json();
