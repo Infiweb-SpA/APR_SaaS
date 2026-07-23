@@ -201,7 +201,7 @@ El sistema implementa un modelo de **Control de Acceso Basado en Roles (RBAC)** 
 APR_SaaS/
 │
 ├── config.py                 # Ajustes por entorno (Dev/Prod, Base de Datos, Keys)
-├── app.py                    # Application Factory (Init Flask, Blueprints y DB)
+├── run.py                    # Application Factory (Init Flask, Blueprints y DB)
 ├── wsgi.py                   # Entrada servidor WSGI
 ├── requirements.txt          # Dependencias
 ├── .env.example
