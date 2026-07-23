@@ -2,6 +2,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from config import config_map
+from flask_migrate import Migrate
 
 db = SQLAlchemy()
 
@@ -29,6 +30,9 @@ def create_app(config_name: str = 'default') -> Flask:
     db.init_app(app)
     login_manager.init_app(app)
 
+    # +++ 2. INICIALIZAR MIGRATE (registra comando 'flask db')
+    migrate = Migrate(app, db)
+
     # ── User loader para Flask-Login ────────────────────────
     @login_manager.user_loader
     def load_user(user_id):
@@ -45,6 +49,10 @@ def create_app(config_name: str = 'default') -> Flask:
     from app.blueprints.main import main_bp
     app.register_blueprint(main_bp)
 
+    # app/__init__.py (dentro de create_app)
+    from app.blueprints.partners import bp as partners_bp
+    app.register_blueprint(partners_bp)
+    
     # ── Crear tablas en BD ──────────────────────────────────
     with app.app_context():
         from app.models import user  # noqa: F401

@@ -248,33 +248,37 @@
 
       {# Socios / Medidores — partners >= 1 #}
       {% if current_user.has_permission('partners', 1) %}
-        <div class="group flex items-center gap-4 bg-white rounded-xl p-4
-                    border border-sand-200 opacity-60 cursor-not-allowed">
-          <div class="w-10 h-10 rounded-lg bg-sand-100 flex items-center
-                      justify-center shrink-0">
-            <svg class="w-5 h-5 text-stone-400" fill="none" stroke="currentColor"
-                 stroke-width="1.5" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0
-                       00-4.682-2.72m.94 3.198l.001.031c0 .225-.012
-                       .447-.037.666A11.944 11.944 0 0112 21c-2.17
-                       0-4.207-.576-5.963-1.584A6.062 6.062 0 016
-                       18.719m12 0a5.971 5.971 0 00-.941-3.197m0
-                       0A5.995 5.995 0 0012 12.75a5.995 5.995 0
-                       00-5.058 2.772m0 0a3 3 0 00-4.681 2.72
-                       8.986 8.986 0 003.74.477m.94-3.197a5.971
-                       5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0
-                       3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25
-                       2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5
-                       0 2.25 2.25 0 014.5 0z"/>
-            </svg>
-          </div>
-          <div>
-            <p class="font-heading text-stone-500">Socios / Medidores</p>
-            <p class="text-xs text-stone-400 mt-0.5">Próximamente &middot; Módulo 4</p>
-          </div>
-        </div>
-      {% endif %}
+  <a href="{{ url_for('partners.index') }}"
+     class="group flex items-center gap-4 bg-white rounded-xl p-4
+            border border-sand-200 hover:border-teal/30
+            hover:shadow-lg hover:shadow-teal/5 transition-all duration-200">
+    <div class="w-10 h-10 rounded-lg bg-navy-50 flex items-center
+                justify-center shrink-0 group-hover:bg-teal/10 transition-colors">
+      <svg class="w-5 h-5 text-navy-600 group-hover:text-teal transition-colors"
+           fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0
+                 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012
+                 .447-.037.666A11.944 11.944 0 0112 21c-2.17
+                 0-4.207-.576-5.963-1.584A6.062 6.062 0 016
+                 18.719m12 0a5.971 5.971 0 00-.941-3.197m0
+                 0A5.995 5.995 0 0012 12.75a5.995 5.995 0
+                 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72
+                 8.986 8.986 0 003.74.477m.94-3.197a5.971
+                 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0
+                 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25
+                 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5
+                 0 2.25 2.25 0 014.5 0z"/>
+      </svg>
+    </div>
+    <div>
+      <p class="font-heading text-navy-900 group-hover:text-teal transition-colors">
+        Socios / Medidores
+      </p>
+      <p class="text-xs text-stone-400 mt-0.5">Catastro, medidores y sectores</p>
+    </div>
+  </a>
+{% endif %}
 
       {# Lecturas — readings >= 1 #}
       {% if current_user.has_permission('readings', 1) %}
