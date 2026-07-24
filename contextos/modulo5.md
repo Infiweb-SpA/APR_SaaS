@@ -653,8 +653,4 @@ flask db history
 
 ---
 
-> **Fin del contexto Módulo 5**.  
-> Este documento permite a cualquier IA continuar el desarrollo del **Módulo 6 (Facturación)** entendiendo exactamente cómo las lecturas capturadas y validadas alimentan el cálculo de boletas, cómo funciona el ciclo de vida completo (captura → validación → cache en Meter), qué reglas de negocio aplican al consumo, y qué APIs y contratos de datos están disponibles para integración.
-```
-
----
+> **Fin del contexto Módulo 5**

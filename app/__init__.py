@@ -57,10 +57,14 @@ def create_app(config_name: str = 'default') -> Flask:
 
     from app.blueprints.readings import bp as readings_bp
     app.register_blueprint(readings_bp)
+
+    from app.blueprints.billing import bp as billing_bp
+    app.register_blueprint(billing_bp)
     
     # ── Crear tablas en BD ──────────────────────────────────
     with app.app_context():
         from app.models import user  # noqa: F401
+        from app.models import billing  # noqa: F401
         db.create_all()
 
     # ── Comandos CLI ────────────────────────────────────────

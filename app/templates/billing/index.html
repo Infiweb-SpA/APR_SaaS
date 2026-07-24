@@ -1,0 +1,788 @@
+{% extends 'layouts/base_admin.html' %}
+
+{% block title %}Facturación – Boletas{% endblock %}
+
+{% block extra_head %}
+  {# DataTables CSS con soporte Tailwind #}
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.tailwindcss.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.tailwindcss.min.css">
+
+  <style>
+    /* ── FIX 31: Estilos DataTables coherentes con el design system ──
+       CSS puro que replica la paleta navy/teal/sand. Sin @apply (CDN mode).
+       ──────────────────────────────────────────────────────────────── */
+
+    .dataTables_wrapper { padding: 0; }
+
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter {
+      margin-bottom: 1rem;
+    }
+    .dataTables_wrapper .dataTables_length select,
+    .dataTables_wrapper .dataTables_filter input {
+      border: 1px solid #e8e4de;
+      border-radius: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+      color: #1c1917;
+      background: white;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .dataTables_wrapper .dataTables_length select:focus,
+    .dataTables_wrapper .dataTables_filter input:focus {
+      outline: none;
+      border-color: #0d9488;
+      box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+    }
+    .dataTables_wrapper .dataTables_length label,
+    .dataTables_wrapper .dataTables_filter label {
+      font-size: 0.875rem;
+      color: #78716c;
+    }
+
+    .dataTables_wrapper .dataTables_info {
+      font-size: 0.8125rem;
+      color: #78716c;
+      padding-top: 0.75rem;
+    }
+    .dataTables_wrapper .dataTables_paginate {
+      padding-top: 0.75rem;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+      padding: 0.375rem 0.75rem;
+      margin: 0 2px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: #1c1917;
+      background: white;
+      border: 1px solid #e8e4de;
+      border-radius: 0.5rem;
+      transition: all 0.15s;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+      background: #f0fdfa;
+      border-color: #0d9488;
+      color: #0d9488;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+      background: #134e4a;
+      border-color: #134e4a;
+      color: white;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    table.dataTable {
+      border-collapse: collapse !important;
+      width: 100% !important;
+    }
+    table.dataTable thead th {
+      background: #eef5fb;
+      color: #071e30;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.75rem 1rem;
+      border-bottom: 2px solid #d6d3d1;
+      white-space: nowrap;
+    }
+    table.dataTable tbody td {
+      padding: 0.625rem 1rem;
+      font-size: 0.875rem;
+      color: #1c1917;
+      border-bottom: 1px solid #f5f3f0;
+      vertical-align: middle;
+    }
+    table.dataTable tbody tr:hover {
+      background: rgba(7, 30, 48, 0.03);
+    }
+    table.dataTable tbody tr.even {
+      background: #faf9f7;
+    }
+    table.dataTable tbody tr.even:hover {
+      background: rgba(7, 30, 48, 0.03);
+    }
+
+    table.dataTable.no-footer { border-bottom: none; }
+    .dataTables_wrapper .dataTables_scrollHead {
+      border-bottom: 2px solid #d6d3d1;
+    }
+
+    .dataTables_wrapper .dataTables_processing {
+      background: rgba(250, 249, 247, 0.9);
+      border: 1px solid #e8e4de;
+      border-radius: 0.75rem;
+      padding: 1rem 2rem;
+      font-size: 0.875rem;
+      color: #57534e;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    /* ── Badges de estado para boletas ── */
+    .badge-bill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-bill-emitida {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .badge-bill-pagada {
+      background: #ccfbf1;
+      color: #115e59;
+    }
+    .badge-bill-vencida {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .badge-bill-anulada {
+      background: #f5f5f4;
+      color: #57534e;
+    }
+    .badge-bill .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+    .badge-bill-emitida .dot  { background: #f59e0b; }
+    .badge-bill-pagada .dot   { background: #14b8a6; }
+    .badge-bill-vencida .dot  { background: #ef4444; }
+    .badge-bill-anulada .dot  { background: #a8a29e; }
+
+    /* ── Acciones en la tabla ── */
+    .actions-group {
+      display: inline-flex;
+      gap: 0.375rem;
+      align-items: center;
+    }
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.5rem;
+      border: 1px solid #e8e4de;
+      background: white;
+      color: #57534e;
+      transition: all 0.15s;
+      cursor: pointer;
+    }
+    .action-btn:hover {
+      border-color: #0d9488;
+      color: #0d9488;
+      background: #f0fdfa;
+    }
+    .action-btn--pay {
+      border-color: #0d9488;
+      color: #0d9488;
+    }
+    .action-btn--pay:hover {
+      background: #f0fdfa;
+      border-color: #0f766e;
+      color: #0f766e;
+    }
+    .action-btn--anular:hover {
+      border-color: #ef4444;
+      color: #ef4444;
+      background: #fef2f2;
+    }
+
+    /* ── Montos ── */
+    .monto-total {
+      font-weight: 600;
+      font-family: 'DM Mono', monospace;
+    }
+    .monto-total-con-mora {
+      color: #991b1b;
+    }
+    .monto-subsidio {
+      color: #0d9488;
+      font-size: 0.75rem;
+    }
+
+    @media (max-width: 768px) {
+      .dataTables_wrapper .dataTables_length,
+      .dataTables_wrapper .dataTables_filter {
+        float: none !important;
+        text-align: left !important;
+      }
+      table.dataTable thead th {
+        padding: 0.5rem 0.625rem;
+        font-size: 0.6875rem;
+      }
+      table.dataTable tbody td {
+        padding: 0.5rem 0.625rem;
+        font-size: 0.8125rem;
+      }
+    }
+
+    div.dataTables_wrapper div.dataTables_processing {
+      top: 50%;
+      transform: translateY(-50%);
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  {# ── Flash Messages ───────────────────────────────────── #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="space-y-3">
+        {% for category, message in messages %}
+          <div class="p-4 rounded-xl text-sm font-medium flex items-start gap-3
+                      {% if category == 'success' %} bg-teal/10 text-teal-dark border border-teal/20
+                      {% elif category == 'warning' %} bg-amber-50 text-amber-700 border border-amber-200
+                      {% else %} bg-red-50 text-red-700 border border-red-200 {% endif %}">
+            <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {% if category == 'success' %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              {% elif category == 'warning' %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+              {% else %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              {% endif %}
+            </svg>
+            <span>{{ message }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {# ── Header ────────────────────────────────────────────── #}
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-heading text-navy-900">Facturación</h1>
+      <p class="text-stone-500 mt-1">Listado de boletas emitidas, cobros y subsidios.</p>
+    </div>
+    <div class="flex items-center gap-3">
+      {# Marcar vencidas (siempre visible para permiso 2) #}
+      {% if current_user.has_permission('billing', 2) %}
+      <button id="btnMarkOverdue"
+              class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Marcar vencidas
+      </button>
+      <a href="{{ url_for('billing.process') }}"
+         class="inline-flex items-center gap-2 px-4 py-2 bg-navy-600 text-white rounded-lg hover:bg-navy-700 transition-colors font-medium text-sm">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+        </svg>
+        Cierre de Mes
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── Filtros ────────────────────────────────────────────── #}
+  <div class="bg-white rounded-xl border border-sand-200 p-4 sm:p-6 shadow-sm">
+    <form id="filterForm" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div>
+        <label class="block text-xs font-medium text-stone-500 mb-1">Buscar</label>
+        <div class="relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input type="text" name="search" id="searchInput"
+                 class="w-full pl-10 pr-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm"
+                 placeholder="RUT o nombre del socio...">
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-stone-500 mb-1">Periodo</label>
+        <select name="periodo" id="periodoFilter"
+                class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm bg-white">
+          <option value="">Todos los periodos</option>
+          {% for p in periodos %}
+          <option value="{{ p }}">{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-stone-500 mb-1">Estado</label>
+        <select name="status" id="statusFilter"
+                class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm bg-white">
+          <option value="">Todos los estados</option>
+          {% for val, label in estados %}
+          <option value="{{ val }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex items-end">
+        <button type="button" id="btnClearFilters"
+                class="w-full px-4 py-2 text-sm font-medium text-stone-600 bg-white border border-sand-300 rounded-lg hover:bg-sand-100 transition-colors">
+          Limpiar filtros
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {# ── Tabla ──────────────────────────────────────────────── #}
+  <div class="bg-white rounded-xl border border-sand-200 shadow-sm overflow-hidden">
+    <div class="p-1">
+      <table id="tablaBoletas" class="w-full" style="width:100%">
+        <thead>
+          <tr>
+            <th>Periodo</th>
+            <th>Socio</th>
+            <th>Consumo</th>
+            <th>Fijo</th>
+            <th>Consumo $</th>
+            <th>Subsidio</th>
+            <th>Mora</th>
+            <th>Total</th>
+            <th>Estado</th>
+            <th>Vencimiento</th>
+            <th class="text-right no-sort">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {# DataTables llena via AJAX #}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── Resumen inferior ──────────────────────────────────── #}
+  <div class="flex flex-wrap gap-3 justify-between items-center text-sm text-stone-500">
+    <div class="flex items-center gap-4">
+      <a href="{{ url_for('billing.config') }}"
+         class="inline-flex items-center gap-1.5 text-navy-600 hover:text-navy-800 font-medium">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        Configurar Tarifas
+      </a>
+    </div>
+    <div>
+      <span id="tableInfo"></span>
+    </div>
+  </div>
+
+</div>
+
+{# ── Modal Anular Boleta ───────────────────────────────── #}
+{% if current_user.has_permission('billing', 2) %}
+<div id="modal-anular" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+  <div class="absolute inset-0 bg-black/40" onclick="closeAnularModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+    <h3 class="text-lg font-heading text-navy-900 mb-4">Anular Boleta</h3>
+    <p class="text-sm text-stone-500 mb-4">
+      Boleta: <span id="anular-periodo" class="font-mono font-semibold text-navy-700"></span>
+      — Total: <span id="anular-monto" class="font-mono font-semibold text-navy-700"></span>
+    </p>
+    <form id="anularForm">
+      <input type="hidden" id="anular-bill-id" value="">
+      <div class="mb-4">
+        <label class="block text-xs font-medium text-stone-500 mb-1">Motivo de anulación *</label>
+        <textarea id="anular-motivo" rows="3" required
+                  class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm resize-none"
+                  placeholder="Indique el motivo..."></textarea>
+      </div>
+      <div id="anular-error" class="hidden mb-3 p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200"></div>
+      <div class="flex gap-3 justify-end">
+        <button type="button" onclick="closeAnularModal()"
+                class="px-4 py-2 text-sm font-medium text-stone-600 bg-white border border-sand-300 rounded-lg hover:bg-sand-100 transition-colors">
+          Cancelar
+        </button>
+        <button type="submit" id="btnAnular"
+                class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
+          Anular Boleta
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{# ── Toast container ───────────────────────────────────── #}
+<div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+  {# ── FIX 32: Solo jQuery + DataTables core + responsive ── #}
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+
+  <script>
+    // CSRF token para todas las peticiones AJAX del módulo
+    var CSRF_TOKEN = '{{ csrf_token() }}';
+
+    $(function () {
+
+      // ── Helpers ──────────────────────────────────────────
+
+      function formatCLP(val) {
+        return '$' + Number(val || 0).toLocaleString('es-CL', { maximumFractionDigits: 0 });
+      }
+
+      function badgeStatus(status) {
+        var cls = 'badge-bill badge-bill-' + status;
+        var label = status.charAt(0).toUpperCase() + status.slice(1);
+        return '<span class="' + cls + '"><span class="dot"></span>' + label + '</span>';
+      }
+
+      function showToast(msg, type) {
+        type = type || 'success';
+        var container = document.getElementById('toast-container');
+        var toast = document.createElement('div');
+        var bgClass = type === 'success'
+          ? 'bg-teal-600 text-white'
+          : type === 'error'
+            ? 'bg-red-600 text-white'
+            : 'bg-amber-500 text-white';
+        toast.className = bgClass + ' px-4 py-3 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2 transform translate-x-full';
+        toast.style.transition = 'transform 0.3s ease';
+        toast.innerHTML = '<span>' + msg + '</span>';
+        container.appendChild(toast);
+        requestAnimationFrame(function () {
+          toast.classList.remove('translate-x-full');
+        });
+        setTimeout(function () {
+          toast.classList.add('translate-x-full');
+          setTimeout(function () { toast.remove(); }, 300);
+        }, 4000);
+      }
+
+      // ── Acciones (FIX 33: renderizadas en frontend) ─────
+
+      function accionesHtml(row) {
+        var html = '<div class="actions-group">';
+
+        // Pagar (solo si no pagada ni anulada)
+        {% if current_user.has_permission('billing', 2) %}
+        if (row.status !== 'pagada' && row.status !== 'anulada') {
+          html += '<button class="action-btn action-btn--pay" title="Marcar como pagada" onclick="markPaid(' + row.id + ')">';
+          html += '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+          html += '</button>';
+        }
+
+        // Anular (solo si no anulada ni pagada)
+        if (row.status !== 'anulada' && row.status !== 'pagada') {
+          html += '<button class="action-btn action-btn--anular" title="Anular boleta" onclick="openAnularModal(' + row.id + ', \'' + row.periodo_display + '\', ' + row.monto_total + ')">';
+          html += '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
+          html += '</button>';
+        }
+        {% endif %}
+
+        html += '</div>';
+        return html;
+      }
+
+      // ── DataTable ───────────────────────────────────────
+
+      var table = $('#tablaBoletas').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+          url: '{{ url_for("billing.api_list") }}',
+          type: 'GET',
+          data: function (d) {
+            d.periodo = $('#periodoFilter').val();
+            d.status = $('#statusFilter').val();
+          },
+          error: function (xhr) {
+            console.error('Error cargando boletas:', xhr);
+          }
+        },
+        columns: [
+          {
+            data: 'periodo_display',
+            className: 'font-mono text-sm whitespace-nowrap font-medium',
+            width: '90px'
+          },
+          {
+            data: 'partner_nombre',
+            render: function (data, type, row) {
+              return '<div class="flex flex-col">' +
+                '<span class="font-medium">' + (data || '—') + '</span>' +
+                '<span class="text-xs text-stone-400 font-mono">' + (row.partner_rut || '') + '</span>' +
+                '</div>';
+            }
+          },
+          {
+            data: 'consumo_m3',
+            className: 'text-center font-mono text-sm',
+            width: '70px',
+            render: function (data) {
+              return (data || 0) + ' m³';
+            }
+          },
+          {
+            data: 'monto_fijo',
+            className: 'text-right font-mono text-sm',
+            width: '80px',
+            render: function (data) {
+              return formatCLP(data);
+            }
+          },
+          {
+            data: null,
+            className: 'text-right',
+            width: '100px',
+            render: function (row) {
+              var html = '<span class="font-mono text-sm">' + formatCLP(row.monto_consumo_basico + row.monto_sobreconsumo) + '</span>';
+              if (row.monto_sobreconsumo > 0) {
+                html += '<br><span class="text-xs text-amber-600">+sc: ' + formatCLP(row.monto_sobreconsumo) + '</span>';
+              }
+              return html;
+            }
+          },
+          {
+            data: 'monto_subsidio',
+            className: 'text-right',
+            width: '80px',
+            render: function (data) {
+              if (data > 0) {
+                return '<span class="monto-subsidio">−' + formatCLP(data) + '</span>';
+              }
+              return '<span class="text-stone-300">—</span>';
+            }
+          },
+          {
+            data: 'monto_mora',
+            className: 'text-right',
+            width: '70px',
+            render: function (data) {
+              if (data > 0) {
+                return '<span class="font-mono text-sm text-red-600">' + formatCLP(data) + '</span>';
+              }
+              return '<span class="text-stone-300">—</span>';
+            }
+          },
+          {
+            data: 'monto_total',
+            className: 'text-right',
+            width: '100px',
+            render: function (data, type, row) {
+              var cls = 'monto-total';
+              if (row.monto_mora > 0) cls += ' monto-total-con-mora';
+              return '<span class="' + cls + '">' + formatCLP(data) + '</span>';
+            }
+          },
+          {
+            data: null,
+            orderable: false,
+            width: '100px',
+            render: function (row) {
+              return badgeStatus(row.status);
+            }
+          },
+          {
+            data: 'fecha_vencimiento',
+            className: 'text-sm text-stone-600 whitespace-nowrap',
+            width: '100px',
+            render: function (data, type, row) {
+              if (!data) return '—';
+              var html = data.split('-').reverse().join('/');
+              if (row.esta_vencida) {
+                html += '<br><span class="text-xs text-red-500 font-semibold">VENCIDA</span>';
+              }
+              return html;
+            }
+          },
+          {
+            data: null,
+            orderable: false,
+            searchable: false,
+            className: 'text-right',
+            width: '90px',
+            render: function (row) {
+              return accionesHtml(row);
+            }
+          }
+        ],
+        order: [[0, 'desc']],
+        pageLength: 25,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+        language: {
+          url: '//cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json',
+          processing: 'Cargando boletas...',
+          lengthMenu: 'Mostrar _MENU_ por página',
+          search: 'Filtrar:',
+          info: 'Mostrando _START_ a _END_ de _TOTAL_ boletas',
+          infoEmpty: 'No hay boletas para mostrar',
+          infoFiltered: '(filtrado de _MAX_ total)',
+          zeroRecords: 'No se encontraron boletas con esos criterios',
+          paginate: {
+            first: 'Primero', last: 'Último', next: 'Siguiente', previous: 'Anterior'
+          }
+        },
+        autoWidth: false,
+        scrollX: true,
+        initComplete: function () {
+          var info = this.api().page.info();
+          $('#tableInfo').text(info.recordsTotal + ' boletas registradas');
+        },
+        drawCallback: function () {
+          var info = this.api().page.info();
+          $('#tableInfo').text(
+            'Mostrando ' + (info.recordsDisplay > 0 ? (info.start + 1) : 0) +
+            '-' + info.end + ' de ' + info.recordsDisplay + ' boletas'
+          );
+        }
+      });
+
+      // ── Filtros ─────────────────────────────────────────
+
+      var searchTimer;
+      $('#searchInput').on('keyup', function () {
+        clearTimeout(searchTimer);
+        var val = this.value;
+        searchTimer = setTimeout(function () {
+          table.search(val).draw();
+        }, 350);
+      });
+
+      $('#periodoFilter, #statusFilter').on('change', function () {
+        table.ajax.reload();
+      });
+
+      $('#btnClearFilters').on('click', function () {
+        $('#searchInput').val('');
+        $('#periodoFilter').val('');
+        $('#statusFilter').val('');
+        table.search('').ajax.reload();
+      });
+
+      $('#searchInput').on('keypress', function (e) {
+        if (e.which === 13) {
+          e.preventDefault();
+          clearTimeout(searchTimer);
+          table.search(this.value).draw();
+        }
+      });
+
+      // ── Marcar vencidas ─────────────────────────────────
+
+      $('#btnMarkOverdue').on('click', function () {
+        if (!confirm('¿Marcar como vencidas todas las boletas fuera de plazo?')) return;
+        var btn = $(this);
+        btn.prop('disabled', true).text('Procesando...');
+        $.post('{{ url_for("billing.mark_overdue") }}', {
+          csrf_token: '{{ csrf_token() }}'
+        }, function (res) {
+          showToast(res.message, 'success');
+          table.ajax.reload();
+        }, 'json').fail(function (xhr) {
+          var msg = 'Error al marcar vencidas.';
+          try { msg = xhr.responseJSON.error || msg; } catch(e) {}
+          showToast(msg, 'error');
+        }).always(function () {
+          btn.prop('disabled', false).html(
+            '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Marcar vencidas'
+          );
+        });
+      });
+    });
+
+    // ── Acciones globales ──────────────────────────────────
+
+        function markPaid(billId) {
+      if (!confirm('¿Confirmar pago de esta boleta?')) return;
+      $.ajax({
+        url: '/billing/' + billId + '/pay',
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF_TOKEN },
+        data: {},
+        dataType: 'json',
+        success: function (res) {
+          if (res.success) {
+            showToast(res.message, 'success');
+            setTimeout(function () { location.reload(); }, 800);
+          } else {
+            showToast(res.error || 'Error al registrar pago.', 'error');
+          }
+        },
+        error: function (xhr) {
+          var msg = 'Error al registrar pago.';
+          try { msg = xhr.responseJSON.error || msg; } catch (e) {}
+          showToast(msg, 'error');
+        }
+      });
+    }
+
+    function openAnularModal(billId, periodo, monto) {
+      document.getElementById('anular-bill-id').value = billId;
+      document.getElementById('anular-periodo').textContent = periodo;
+      document.getElementById('anular-monto').textContent = '$' + Number(monto).toLocaleString('es-CL');
+      document.getElementById('anular-motivo').value = '';
+      document.getElementById('anular-error').classList.add('hidden');
+      document.getElementById('modal-anular').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeAnularModal() {
+      document.getElementById('modal-anular').classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeAnularModal();
+    });
+
+    document.getElementById('anularForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var billId = document.getElementById('anular-bill-id').value;
+      var motivo = document.getElementById('anular-motivo').value.trim();
+      var btn = document.getElementById('btnAnular');
+      var errorDiv = document.getElementById('anular-error');
+
+      if (!motivo) {
+        errorDiv.textContent = 'El motivo es obligatorio.';
+        errorDiv.classList.remove('hidden');
+        return;
+      }
+
+      errorDiv.classList.add('hidden');
+      btn.disabled = true;
+      btn.textContent = 'Anulando...';
+
+      var fd = new FormData();
+      fd.append('motivo', motivo);
+      fd.append('csrf_token', '{{ csrf_token() }}');
+
+      fetch('/billing/' + billId + '/anular', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: fd
+      })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.success) {
+          closeAnularModal();
+          showToast(data.message, 'success');
+          setTimeout(function () { location.reload(); }, 800);
+        } else {
+          errorDiv.textContent = data.error || 'Error desconocido.';
+          errorDiv.classList.remove('hidden');
+        }
+      })
+      .catch(function () {
+        errorDiv.textContent = 'Error de conexión.';
+        errorDiv.classList.remove('hidden');
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.textContent = 'Anular Boleta';
+      });
+    });
+  </script>
+{% endblock %}

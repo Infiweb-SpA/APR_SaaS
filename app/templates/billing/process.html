@@ -1,0 +1,819 @@
+{% extends 'layouts/base_admin.html' %}
+
+{% block title %}Cierre de Mes – Facturación{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Badges de estado para el preview/resultados ── */
+  .badge-sm {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge-sm-teal   { background: #ccfbf1; color: #115e59; }
+  .badge-sm-amber  { background: #fef3c7; color: #92400e; }
+  .badge-sm-red    { background: #fee2e2; color: #991b1b; }
+  .badge-sm-stone  { background: #f5f5f4; color: #57534e; }
+
+  /* ── Progress bar de avance ── */
+  .progress-track {
+    height: 0.5rem;
+    background: #e8e4de;
+    border-radius: 9999px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 9999px;
+    transition: width 0.6s ease;
+  }
+
+  /* ── Steps indicator ── */
+  .step-dot {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    transition: all 0.3s ease;
+  }
+  .step-dot-inactive {
+    background: #f5f3f0;
+    color: #a8a29e;
+    border: 2px solid #e8e4de;
+  }
+  .step-dot-active {
+    background: #0d9488;
+    color: white;
+    border: 2px solid #0d9488;
+    box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.15);
+  }
+  .step-dot-done {
+    background: #14b8a6;
+    color: white;
+    border: 2px solid #14b8a6;
+  }
+
+  /* ── Tabla compacta del preview ── */
+  .preview-table th {
+    background: #eef5fb;
+    color: #071e30;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #d6d3d1;
+    white-space: nowrap;
+  }
+  .preview-table td {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    border-bottom: 1px solid #f5f3f0;
+    vertical-align: middle;
+  }
+  .preview-table tr:hover { background: rgba(7, 30, 48, 0.02); }
+
+  /* ── Resultado animation ── */
+  @keyframes resultFadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .result-animate {
+    animation: resultFadeUp 0.5s ease-out forwards;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  {# ── Flash Messages ───────────────────────────────────── #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="space-y-3">
+        {% for category, message in messages %}
+          <div class="p-4 rounded-xl text-sm font-medium flex items-start gap-3
+                      {% if category == 'success' %} bg-teal/10 text-teal-dark border border-teal/20
+                      {% elif category == 'warning' %} bg-amber-50 text-amber-700 border border-amber-200
+                      {% else %} bg-red-50 text-red-700 border border-red-200 {% endif %}">
+            <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {% if category == 'success' %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              {% elif category == 'warning' %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+              {% else %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              {% endif %}
+            </svg>
+            <span>{{ message }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {# ── Header ────────────────────────────────────────────── #}
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-heading text-navy-900">Motor de Cierre de Mes</h1>
+      <p class="text-stone-500 mt-1">Genere boletas masivamente para un periodo de facturación.</p>
+    </div>
+    <a href="{{ url_for('billing.index') }}"
+       class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-stone-600 bg-white border border-sand-300 rounded-lg hover:bg-sand-100 transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+      </svg>
+      Volver a Boletas
+    </a>
+  </div>
+
+  {# ── Steps Indicator ───────────────────────────────────── #}
+  <div class="bg-white rounded-xl border border-sand-200 shadow-sm p-6">
+    <div class="flex items-center justify-between max-w-xl mx-auto">
+      {# Step 1: Configurar #}
+      <div class="flex flex-col items-center gap-2">
+        <div id="step1" class="step-dot step-dot-active">1</div>
+        <span class="text-xs font-medium text-teal">Configurar</span>
+      </div>
+      <div class="flex-1 h-0.5 bg-sand-200 mx-3 rounded" id="line1"></div>
+      {# Step 2: Revisar #}
+      <div class="flex flex-col items-center gap-2">
+        <div id="step2" class="step-dot step-dot-inactive">2</div>
+        <span id="step2-label" class="text-xs font-medium text-stone-400">Revisar</span>
+      </div>
+      <div class="flex-1 h-0.5 bg-sand-200 mx-3 rounded" id="line2"></div>
+      {# Step 3: Ejecutar #}
+      <div class="flex flex-col items-center gap-2">
+        <div id="step3" class="step-dot step-dot-inactive">3</div>
+        <span id="step3-label" class="text-xs font-medium text-stone-400">Ejecutar</span>
+      </div>
+    </div>
+  </div>
+
+  {# ── Alerta si no hay tarifa ───────────────────────────── #}
+  {% if not preview %}
+  <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+    <div class="flex gap-3">
+      <svg class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+      </svg>
+      <div>
+        <p class="text-sm font-semibold text-amber-800">No hay tarifa activa configurada.</p>
+        <p class="text-sm text-amber-700 mt-1">
+          Debe configurar al menos una tarifa antes de ejecutar el cierre de mes.
+          <a href="{{ url_for('billing.config') }}" class="underline font-medium hover:text-amber-900">Configurar tarifas →</a>
+        </p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Step 1: Configuración del Cierre ──────────────────── #}
+  <div id="configSection" class="bg-white rounded-xl border border-sand-200 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-sand-200 bg-sand-50">
+      <h2 class="text-lg font-heading text-navy-900">1. Configurar Periodo</h2>
+      <p class="text-xs text-stone-500 mt-0.5">Seleccione el periodo a facturar y las fechas de emisión/vencimiento.</p>
+    </div>
+
+    <form id="configForm" class="p-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+        {# Periodo #}
+        <div>
+          <label for="periodo" class="block text-xs font-medium text-stone-500 mb-1">
+            Periodo a Facturar <span class="text-red-400">*</span>
+          </label>
+          <input type="month" id="periodo" name="periodo"
+                 value="{{ periodo_default }}"
+                 class="w-full px-3 py-2.5 border border-sand-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal text-sm"
+                 required>
+          <p class="text-xs text-stone-400 mt-1">Mes y año a facturar (YYYY-MM).</p>
+        </div>
+
+        {# Fecha Emisión #}
+        <div>
+          <label for="fecha_emision" class="block text-xs font-medium text-stone-500 mb-1">
+            Fecha de Emisión
+          </label>
+          <input type="date" id="fecha_emision" name="fecha_emision"
+                 value="{{ '' }}"
+                 class="w-full px-3 py-2.5 border border-sand-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal text-sm">
+          <p class="text-xs text-stone-400 mt-1">Por defecto: hoy.</p>
+        </div>
+
+        {# Fecha Vencimiento #}
+        <div>
+          <label for="fecha_vencimiento" class="block text-xs font-medium text-stone-500 mb-1">
+            Fecha de Vencimiento
+          </label>
+          <input type="date" id="fecha_vencimiento" name="fecha_vencimiento"
+                 value="{{ '' }}"
+                 class="w-full px-3 py-2.5 border border-sand-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal text-sm">
+          <p class="text-xs text-stone-400 mt-1">Por defecto: día 28 del mes actual.</p>
+        </div>
+
+      </div>
+
+      {# Error container #}
+      <div id="configError" class="hidden mt-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200 flex items-start gap-2">
+        <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span id="configErrorText"></span>
+      </div>
+
+      <div class="mt-6">
+        <button type="submit" id="btnPreview"
+                class="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-teal rounded-lg hover:bg-teal-dark transition-colors
+                       {% if not preview %} opacity-50 cursor-not-allowed {% endif %}"
+                {% if not preview %} disabled {% endif %}>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+          Generar Vista Previa
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {# ── Step 2: Vista Previa ──────────────────────────────── #}
+  <div id="previewSection" class="hidden bg-white rounded-xl border border-sand-200 shadow-sm overflow-hidden result-animate">
+    <div class="px-6 py-4 border-b border-sand-200 bg-sand-50">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-heading text-navy-900">2. Revisar Cierre</h2>
+          <p class="text-xs text-stone-500 mt-0.5">Verifique los datos antes de ejecutar.</p>
+        </div>
+        <span id="previewPeriodo" class="text-sm font-mono font-semibold text-navy-700 px-3 py-1 bg-navy-50 rounded-lg"></span>
+      </div>
+    </div>
+
+    <div class="p-6 space-y-6">
+
+      {# Tarifa aplicada #}
+      <div>
+        <h3 class="text-sm font-semibold text-navy-800 uppercase tracking-wider mb-3">Tarifa Aplicada</h3>
+        <div id="tarifaInfo" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {# Se llena via JS #}
+        </div>
+      </div>
+
+      {# Barra de avance #}
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm font-semibold text-navy-800 uppercase tracking-wider">Cobertura de Lecturas</h3>
+          <span id="avanceText" class="text-sm font-mono font-semibold text-navy-700"></span>
+        </div>
+        <div class="progress-track">
+          <div id="avanceBar" class="progress-fill bg-teal" style="width: 0%"></div>
+        </div>
+        <div class="flex justify-between mt-2 text-xs text-stone-500">
+          <span id="avanceConLectura"></span>
+          <span id="avanceSinLectura"></span>
+        </div>
+      </div>
+
+      {# Monto estimado #}
+      <div class="flex items-center gap-4 p-4 bg-navy-50 border border-navy-100 rounded-xl">
+        <div class="w-12 h-12 rounded-lg bg-navy-600 flex items-center justify-center">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="text-xs text-navy-600 font-medium">Monto Total Estimado</p>
+          <p id="montoEstimado" class="text-2xl font-heading text-navy-900">$0</p>
+        </div>
+        <div class="ml-auto text-right">
+          <p class="text-xs text-navy-600">Boletas existentes</p>
+          <p id="existingBills" class="text-lg font-heading text-navy-900">0</p>
+        </div>
+      </div>
+
+      {# Socios con lectura #}
+      <div id="conLecturaSection">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold text-navy-800 uppercase tracking-wider">Socios con Lectura</h3>
+          <span id="conLecturaCount" class="badge-sm badge-sm-teal"></span>
+        </div>
+        <div class="overflow-x-auto border border-sand-200 rounded-lg">
+          <table id="tablaConLectura" class="w-full preview-table">
+            <thead>
+              <tr>
+                <th class="text-left">Socio</th>
+                <th class="text-left">RUT</th>
+                <th class="text-center">Consumo</th>
+                <th class="text-center">Lectura</th>
+                <th class="text-center">Mora</th>
+                <th class="text-right">Monto Est.</th>
+              </tr>
+            </thead>
+            <tbody id="conLecturaBody">
+              {# Se llena via JS #}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {# Socios sin lectura (warnings) #}
+      <div id="sinLecturaSection" class="hidden">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold text-amber-700 uppercase tracking-wider">Socios sin Lectura (Omitidos)</h3>
+          <span id="sinLecturaCount" class="badge-sm badge-sm-amber"></span>
+        </div>
+        <div class="overflow-x-auto border border-amber-200 rounded-lg bg-amber-50/30">
+          <table class="w-full preview-table">
+            <thead>
+              <tr>
+                <th class="text-left">Socio</th>
+                <th class="text-left">RUT</th>
+                <th class="text-left">Estado</th>
+                <th class="text-left">Razón</th>
+              </tr>
+            </thead>
+            <tbody id="sinLecturaBody">
+              {# Se llena via JS #}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {# Boletas existentes warning #}
+      <div id="existingWarning" class="hidden bg-red-50 border border-red-200 rounded-xl p-4">
+        <div class="flex gap-3">
+          <svg class="w-5 h-5 text-red-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+          </svg>
+          <div>
+            <p class="text-sm font-semibold text-red-800">Ya existen boletas para este periodo.</p>
+            <p class="text-sm text-red-700 mt-1">
+              Debe anular las boletas existentes antes de regenerar.
+              <a href="{{ url_for('billing.index') }}" class="underline font-medium hover:text-red-900">Ver boletas →</a>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {# Botón ejecutar #}
+      <div class="flex flex-col sm:flex-row gap-3 justify-end pt-2 border-t border-sand-200">
+        <button type="button" onclick="volverAConfig()"
+                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-stone-600 bg-white border border-sand-300 rounded-lg hover:bg-sand-100 transition-colors">
+          Modificar parámetros
+        </button>
+        <button type="button" id="btnExecute"
+                class="inline-flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-navy-600 rounded-lg hover:bg-navy-700 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+          </svg>
+          Ejecutar Cierre de Mes
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {# ── Step 3: Resultado ─────────────────────────────────── #}
+  <div id="resultSection" class="hidden bg-white rounded-xl border border-sand-200 shadow-sm overflow-hidden result-animate">
+    <div class="px-6 py-4 border-b border-sand-200 bg-sand-50">
+      <h2 class="text-lg font-heading text-navy-900">3. Resultado del Cierre</h2>
+    </div>
+    <div class="p-6">
+
+      {# Resumen KPI #}
+      <div id="resultKpis" class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        {# Se llena via JS #}
+      </div>
+
+      {# Warnings #}
+      <div id="resultWarnings" class="hidden mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+        <div class="flex gap-2">
+          <svg class="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+          </svg>
+          <div id="resultWarningsText" class="text-sm text-amber-700"></div>
+        </div>
+      </div>
+
+      {# Omitidos #}
+      <div id="resultOmitidos" class="hidden mb-4">
+        <h4 class="text-sm font-semibold text-stone-600 mb-2">Socios omitidos:</h4>
+        <div id="resultOmitidosList" class="space-y-1"></div>
+      </div>
+
+      {# Acciones post-cierre #}
+      <div class="flex flex-col sm:flex-row gap-3 justify-center pt-4 border-t border-sand-200">
+        <a href="{{ url_for('billing.index') }}"
+           class="inline-flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-navy-600 rounded-lg hover:bg-navy-700 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+          Ver Boletas Generadas
+        </a>
+        <button type="button" onclick="resetProcess()"
+                class="inline-flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium text-stone-600 bg-white border border-sand-300 rounded-lg hover:bg-sand-100 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          Nuevo Cierre
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {# ── Historial de Cierres ──────────────────────────────── #}
+  {% if periodos_cerrados %}
+  <div class="bg-white rounded-xl border border-sand-200 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-sand-200 bg-sand-50">
+      <h2 class="text-lg font-heading text-navy-900">Historial de Cierres</h2>
+      <p class="text-xs text-stone-500 mt-0.5">Periodos con boletas emitidas en el sistema.</p>
+    </div>
+    <div class="p-4">
+      <div class="flex flex-wrap gap-2">
+        {% for periodo, count in periodos_cerrados %}
+        <a href="{{ url_for('billing.index') }}?periodo={{ periodo }}"
+           class="inline-flex items-center gap-2 px-3 py-2 bg-sand-50 border border-sand-200 rounded-lg hover:border-teal/30 hover:bg-teal/5 transition-all text-sm group">
+          <span class="font-mono font-medium text-navy-800">{{ periodo }}</span>
+          <span class="text-xs px-1.5 py-0.5 rounded bg-navy-50 text-navy-600 font-medium">{{ count }}</span>
+          <svg class="w-3.5 h-3.5 text-stone-400 group-hover:text-teal transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+{# ── Confirm modal ─────────────────────────────────────── #}
+<div id="confirmModal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+  <div class="absolute inset-0 bg-black/40" onclick="closeConfirmModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+    <div class="text-center">
+      <div class="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+        <svg class="w-7 h-7 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-heading text-navy-900 mb-2">Confirmar Cierre de Mes</h3>
+      <p class="text-sm text-stone-500 mb-1">
+        Se generarán <span id="confirmCount" class="font-semibold text-navy-700">0</span> boletas para el periodo
+        <span id="confirmPeriodo" class="font-mono font-semibold text-navy-700"></span>.
+      </p>
+      <p class="text-sm text-stone-500 mb-6">Esta acción no se puede deshacer fácilmente.</p>
+      <div class="flex gap-3 justify-center">
+        <button type="button" onclick="closeConfirmModal()"
+                class="px-5 py-2.5 text-sm font-medium text-stone-600 bg-white border border-sand-300 rounded-lg hover:bg-sand-100 transition-colors">
+          Cancelar
+        </button>
+        <button type="button" id="btnConfirmExecute"
+                class="px-5 py-2.5 text-sm font-medium text-white bg-navy-600 rounded-lg hover:bg-navy-700 transition-colors">
+          Sí, Ejecutar Cierre
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Toast container ───────────────────────────────────── #}
+<div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  (function () {
+
+    // ── Estado local ────────────────────────────────────
+
+    var currentPreview = null;
+    var currentPeriodo = null;
+    var currentFechaEmision = null;
+    var currentFechaVencimiento = null;
+
+    // ── Helpers ─────────────────────────────────────────
+
+    function formatCLP(val) {
+      return '$' + Number(val || 0).toLocaleString('es-CL', { maximumFractionDigits: 0 });
+    }
+
+    function showToast(msg, type) {
+      type = type || 'success';
+      var container = document.getElementById('toast-container');
+      var toast = document.createElement('div');
+      var bgClass = type === 'success' ? 'bg-teal-600 text-white' : type === 'error' ? 'bg-red-600 text-white' : 'bg-amber-500 text-white';
+      toast.className = bgClass + ' px-4 py-3 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2 transform translate-x-full';
+      toast.style.transition = 'transform 0.3s ease';
+      toast.innerHTML = '<span>' + msg + '</span>';
+      container.appendChild(toast);
+      requestAnimationFrame(function () { toast.classList.remove('translate-x-full'); });
+      setTimeout(function () {
+        toast.classList.add('translate-x-full');
+        setTimeout(function () { toast.remove(); }, 300);
+      }, 4000);
+    }
+
+    function setStep(step) {
+      for (var i = 1; i <= 3; i++) {
+        var dot = document.getElementById('step' + i);
+        var label = document.getElementById('step' + i + '-label');
+        dot.className = 'step-dot ' + (i < step ? 'step-dot-done' : i === step ? 'step-dot-active' : 'step-dot-inactive');
+        if (i < step) dot.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>';
+        else dot.textContent = i;
+        if (label) label.className = 'text-xs font-medium ' + (i <= step ? 'text-teal' : 'text-stone-400');
+      }
+      var line1 = document.getElementById('line1');
+      var line2 = document.getElementById('line2');
+      line1.className = 'flex-1 h-0.5 mx-3 rounded ' + (step > 1 ? 'bg-teal' : 'bg-sand-200');
+      line2.className = 'flex-1 h-0.5 mx-3 rounded ' + (step > 2 ? 'bg-teal' : 'bg-sand-200');
+    }
+
+    // ── Preview rendering ───────────────────────────────
+
+    function renderTarifaInfo(tarifa) {
+      var items = [
+        { label: 'Cargo Fijo', value: formatCLP(tarifa.cargo_fijo) },
+        { label: 'Valor m³', value: formatCLP(tarifa.valor_m3_base) },
+        { label: 'Límite', value: tarifa.limite_sobreconsumo + ' m³' },
+        { label: 'Sobreconsumo', value: formatCLP(tarifa.valor_m3_sobreconsumo) + '/m³' },
+        { label: 'Multa Mora', value: formatCLP(tarifa.multa_mora) },
+        { label: 'Subsidio', value: tarifa.porcentaje_subsidio_display || '0%' },
+      ];
+      var html = '';
+      items.forEach(function (item) {
+        html += '<div class="bg-sand-50 border border-sand-200 rounded-lg p-3 text-center">' +
+          '<p class="text-xs text-stone-500 mb-1">' + item.label + '</p>' +
+          '<p class="text-sm font-mono font-semibold text-navy-800">' + item.value + '</p>' +
+          '</div>';
+      });
+      document.getElementById('tarifaInfo').innerHTML = html;
+    }
+
+    function renderPreview(data) {
+      var p = data.preview;
+      currentPreview = p;
+
+      // Periodo
+      document.getElementById('previewPeriodo').textContent = p.periodo;
+
+      // Tarifa
+      renderTarifaInfo(p.tarifa);
+
+      // Avance
+      var pct = p.total_partners > 0 ? Math.round((p.partners_con_lectura / p.total_partners) * 100) : 0;
+      document.getElementById('avanceText').textContent = pct + '%';
+      document.getElementById('avanceBar').style.width = pct + '%';
+      document.getElementById('avanceBar').className = 'progress-fill ' + (pct < 50 ? 'bg-amber-500' : pct < 80 ? 'bg-teal' : 'bg-teal');
+      document.getElementById('avanceConLectura').textContent = p.partners_con_lectura + ' socios con lectura';
+      document.getElementById('avanceSinLectura').textContent = p.partners_sin_lectura + ' sin lectura';
+
+      // Monto
+      document.getElementById('montoEstimado').textContent = formatCLP(p.estimated_total);
+      document.getElementById('existingBills').textContent = p.existing_bills;
+
+      // Existing warning
+      if (p.existing_bills > 0) {
+        document.getElementById('existingWarning').classList.remove('hidden');
+        document.getElementById('btnExecute').disabled = true;
+        document.getElementById('btnExecute').classList.add('opacity-50', 'cursor-not-allowed');
+      } else {
+        document.getElementById('existingWarning').classList.add('hidden');
+        document.getElementById('btnExecute').disabled = false;
+        document.getElementById('btnExecute').classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+
+      // Tabla con lectura
+      document.getElementById('conLecturaCount').textContent = p.partners_con_lectura + ' socios';
+      var tbodyCon = document.getElementById('conLecturaBody');
+      tbodyCon.innerHTML = '';
+      p.detalle_con_lectura.forEach(function (item) {
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td class="font-medium">' + item.nombre + '</td>' +
+          '<td class="font-mono text-xs text-stone-500">' + item.rut + '</td>' +
+          '<td class="text-center font-mono">' + item.consumo_m3 + ' m³</td>' +
+          '<td class="text-center">' +
+            '<span class="badge-sm badge-sm-' + (item.reading_status === 'validada' ? 'teal' : 'amber') + '">' +
+              item.reading_status + '</span></td>' +
+          '<td class="text-center">' + (item.tiene_mora ? '<span class="badge-sm badge-sm-red">Sí</span>' : '<span class="text-stone-300">—</span>') + '</td>' +
+          '<td class="text-right font-mono font-semibold">' + formatCLP(item.monto_estimado) + '</td>';
+        tbodyCon.appendChild(tr);
+      });
+
+      // Tabla sin lectura
+      if (p.detalle_sin_lectura.length > 0) {
+        document.getElementById('sinLecturaSection').classList.remove('hidden');
+        document.getElementById('sinLecturaCount').textContent = p.partners_sin_lectura + ' socios';
+        var tbodySin = document.getElementById('sinLecturaBody');
+        tbodySin.innerHTML = '';
+        p.detalle_sin_lectura.forEach(function (item) {
+          var tr = document.createElement('tr');
+          tr.innerHTML =
+            '<td class="font-medium">' + item.nombre + '</td>' +
+            '<td class="font-mono text-xs text-stone-500">' + item.rut + '</td>' +
+            '<td><span class="badge-sm badge-sm-stone">' + item.estado + '</span></td>' +
+            '<td class="text-amber-600 text-xs">' + item.razon + '</td>';
+          tbodySin.appendChild(tr);
+        });
+      } else {
+        document.getElementById('sinLecturaSection').classList.add('hidden');
+      }
+
+      // Mostrar sección
+      document.getElementById('previewSection').classList.remove('hidden');
+      setStep(2);
+      document.getElementById('previewSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ── Result rendering ────────────────────────────────
+
+    function renderResult(data) {
+      var r = data.resultado;
+
+      // KPIs
+      var kpis = [
+        { label: 'Boletas Creadas', value: r.boletas_creadas, color: 'teal', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+        { label: 'Lecturas Auto-Validadas', value: r.lecturas_auto_validadas, color: 'navy', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
+        { label: 'Socios Omitidos', value: r.omitidos_count, color: 'amber', icon: 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636' },
+        { label: 'Warnings', value: r.warnings.length, color: 'stone', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z' },
+      ];
+
+      var kpiHtml = '';
+      kpis.forEach(function (k) {
+        var bgMap = { teal: 'bg-teal/10 text-teal', navy: 'bg-navy-50 text-navy-600', amber: 'bg-amber-50 text-amber-600', stone: 'bg-stone-100 text-stone-500' };
+        kpiHtml += '<div class="bg-sand-50 border border-sand-200 rounded-lg p-4 text-center">' +
+          '<div class="w-10 h-10 rounded-full ' + bgMap[k.color] + ' flex items-center justify-center mx-auto mb-2">' +
+            '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="' + k.icon + '"/></svg>' +
+          '</div>' +
+          '<p class="text-2xl font-heading text-navy-900">' + k.value + '</p>' +
+          '<p class="text-xs text-stone-500 mt-1">' + k.label + '</p>' +
+          '</div>';
+      });
+      document.getElementById('resultKpis').innerHTML = kpiHtml;
+
+      // Warnings
+      if (r.warnings.length > 0) {
+        document.getElementById('resultWarnings').classList.remove('hidden');
+        var wHtml = '<ul class="list-disc list-inside space-y-1">';
+        r.warnings.forEach(function (w) { wHtml += '<li>' + w + '</li>'; });
+        wHtml += '</ul>';
+        document.getElementById('resultWarningsText').innerHTML = wHtml;
+      }
+
+      // Omitidos
+      if (r.omitidos.length > 0) {
+        document.getElementById('resultOmitidos').classList.remove('hidden');
+        var oHtml = '';
+        r.omitidos.forEach(function (o) {
+          oHtml += '<div class="flex items-center gap-2 text-sm text-stone-600">' +
+            '<svg class="w-3.5 h-3.5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>' +
+            '<span class="font-medium">' + o.nombre + '</span>' +
+            '<span class="text-xs text-stone-400">(' + o.razon + ')</span>' +
+            '</div>';
+        });
+        document.getElementById('resultOmitidosList').innerHTML = oHtml;
+      }
+
+      document.getElementById('resultSection').classList.remove('hidden');
+      setStep(3);
+      document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ── Acciones ────────────────────────────────────────
+
+    function volverAConfig() {
+      document.getElementById('previewSection').classList.add('hidden');
+      setStep(1);
+      document.getElementById('configSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    window.volverAConfig = volverAConfig;
+
+    function resetProcess() {
+      document.getElementById('previewSection').classList.add('hidden');
+      document.getElementById('resultSection').classList.add('hidden');
+      setStep(1);
+      currentPreview = null;
+      document.getElementById('configSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    window.resetProcess = resetProcess;
+
+    function closeConfirmModal() {
+      document.getElementById('confirmModal').classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+    window.closeConfirmModal = closeConfirmModal;
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeConfirmModal();
+    });
+
+    // ── Step 1: Preview ─────────────────────────────────
+
+    document.getElementById('configForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var periodo = document.getElementById('periodo').value;
+      var errorDiv = document.getElementById('configError');
+      var errorText = document.getElementById('configErrorText');
+
+      if (!periodo || periodo.length !== 7) {
+        errorText.textContent = 'Seleccione un periodo válido.';
+        errorDiv.classList.remove('hidden');
+        return;
+      }
+
+      errorDiv.classList.add('hidden');
+      var btn = document.getElementById('btnPreview');
+      btn.disabled = true;
+      btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg> Generando...';
+
+      currentPeriodo = periodo;
+      currentFechaEmision = document.getElementById('fecha_emision').value || null;
+      currentFechaVencimiento = document.getElementById('fecha_vencimiento').value || null;
+
+      var fd = new FormData();
+      fd.append('periodo', periodo);
+      fd.append('csrf_token', '{{ csrf_token() }}');
+
+      fetch('{{ url_for("billing.process_preview") }}', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: fd
+      })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.success) {
+          renderPreview(data);
+        } else {
+          errorText.textContent = data.error || 'Error al generar preview.';
+          errorDiv.classList.remove('hidden');
+        }
+      })
+      .catch(function () {
+        errorText.textContent = 'Error de conexión.';
+        errorDiv.classList.remove('hidden');
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg> Generar Vista Previa';
+      });
+    });
+
+    // ── Step 2: Execute ─────────────────────────────────
+
+    document.getElementById('btnExecute').addEventListener('click', function () {
+      if (!currentPreview || currentPreview.existing_bills > 0) return;
+
+      document.getElementById('confirmCount').textContent = currentPreview.partners_con_lectura;
+      document.getElementById('confirmPeriodo').textContent = currentPeriodo;
+      document.getElementById('confirmModal').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    });
+
+    document.getElementById('btnConfirmExecute').addEventListener('click', function () {
+      closeConfirmModal();
+      var btn = document.getElementById('btnExecute');
+      btn.disabled = true;
+      btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg> Ejecutando cierre...';
+
+      var fd = new FormData();
+      fd.append('periodo', currentPeriodo);
+      fd.append('csrf_token', '{{ csrf_token() }}');
+      if (currentFechaEmision) fd.append('fecha_emision', currentFechaEmision);
+      if (currentFechaVencimiento) fd.append('fecha_vencimiento', currentFechaVencimiento);
+
+      fetch('{{ url_for("billing.process_execute") }}', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: fd
+      })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.success) {
+          showToast(data.message, 'success');
+          renderResult(data);
+        } else {
+          showToast(data.error || 'Error al ejecutar cierre.', 'error');
+        }
+      })
+      .catch(function () {
+        showToast('Error de conexión.', 'error');
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg> Ejecutar Cierre de Mes';
+      });
+    });
+
+  })();
+</script>
+{% endblock %}

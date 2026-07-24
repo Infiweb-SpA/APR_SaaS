@@ -1,0 +1,557 @@
+{% extends 'layouts/base_admin.html' %}
+
+{% block title %}Configurar Tarifas – APR{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  {# ── Flash Messages ───────────────────────────────────── #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="space-y-3">
+        {% for category, message in messages %}
+          <div class="p-4 rounded-xl text-sm font-medium flex items-start gap-3
+                      {% if category == 'success' %} bg-teal/10 text-teal-dark border border-teal/20
+                      {% elif category == 'warning' %} bg-amber-50 text-amber-700 border border-amber-200
+                      {% else %} bg-red-50 text-red-700 border border-red-200 {% endif %}">
+            <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {% if category == 'success' %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              {% elif category == 'warning' %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+              {% else %}
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              {% endif %}
+            </svg>
+            <span>{{ message }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {# ── Header ────────────────────────────────────────────── #}
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-heading text-navy-900">Configuración de Tarifas</h1>
+      <p class="text-stone-500 mt-1">Defina los valores de cargo fijo, consumo, subsidios y mora vigentes.</p>
+    </div>
+    <a href="{{ url_for('billing.index') }}"
+       class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-stone-600 bg-white border border-sand-300 rounded-lg hover:bg-sand-100 transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+      </svg>
+      Volver a Boletas
+    </a>
+  </div>
+
+  {# ── Tarifa Activa (o formulario de creación) ─────────── #}
+  <div class="bg-white rounded-xl border border-sand-200 shadow-sm overflow-hidden">
+
+    {# Cabecera de sección #}
+    <div class="px-6 py-4 border-b border-sand-200 bg-sand-50">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg flex items-center justify-center
+                    {% if tarifa %} bg-teal/10 text-teal {% else %} bg-navy-50 text-navy-600 {% endif %}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-lg font-heading text-navy-900">
+            {% if tarifa %}Tarifa Vigente{% else %}Crear Primera Configuración{% endif %}
+          </h2>
+          {% if tarifa %}
+          <p class="text-xs text-stone-500 mt-0.5">
+            Activa desde {{ tarifa.vigente_desde.strftime('%d/%m/%Y') if tarifa.vigente_desde else '—' }}
+            · ID #{{ tarifa.id }}
+          </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {# Formulario #}
+    <form id="tariffForm" class="p-6">
+      <input type="hidden" name="tariff_id" value="{{ tarifa.id if tarifa else '' }}">
+
+      {# ── Sección 1: Cargos por Consumo ─────────────────── #}
+      <fieldset class="mb-8">
+        <legend class="flex items-center gap-2 text-sm font-semibold text-navy-800 uppercase tracking-wider mb-4">
+          <svg class="w-4 h-4 text-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+          </svg>
+          Cargos por Consumo
+        </legend>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+          {# Cargo Fijo #}
+          <div>
+            <label for="cargo_fijo" class="block text-xs font-medium text-stone-500 mb-1">
+              Cargo Fijo Mensual <span class="text-red-400">*</span>
+            </label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
+              <input type="number" id="cargo_fijo" name="cargo_fijo" min="0" step="100" required
+                     value="{{ tarifa.cargo_fijo|int if tarifa else '' }}"
+                     class="w-full pl-7 pr-3 py-2.5 border border-sand-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal text-sm"
+                     placeholder="0">
+            </div>
+            <p class="text-xs text-stone-400 mt-1">Monto fijo que paga todo socio cada mes.</p>
+          </div>
+
+          {# Valor m³ Base #}
+          <div>
+            <label for="valor_m3_base" class="block text-xs font-medium text-stone-500 mb-1">
+              Valor m³ Base <span class="text-red-400">*</span>
+            </label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
+              <input type="number" id="valor_m3_base" name="valor_m3_base" min="0" step="50" required
+                     value="{{ tarifa.valor_m3_base|int if tarifa else '' }}"
+                     class="w-full pl-7 pr-3 py-2.5 border border-sand-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal text-sm"
+                     placeholder="0">
+            </div>
+            <p class="text-xs text-stone-400 mt-1">Precio por cada m³ consumido dentro del tramo base.</p>
+          </div>
+
+          {# Límite Sobreconsumo #}
+          <div>
+            <label for="limite_sobreconsumo" class="block text-xs font-medium text-stone-500 mb-1">
+              Límite Sobreconsumo <span class="text-red-400">*</span>
+            </label>
+            <div class="relative">
+              <input type="number" id="limite_sobreconsumo" name="limite_sobreconsumo" min="0" step="1" required
+                     value="{{ tarifa.limite_sobreconsumo if tarifa else '15' }}"
+                     class="w-full px-3 py-2.5 border border-sand-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal text-sm"
+                     placeholder="15">
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 text-xs">m³</span>
+            </div>
+            <p class="text-xs text-stone-400 mt-1">A partir de este consumo se aplica tarifa de sobreconsumo.</p>
+          </div>
+
+          {# Valor m³ Sobreconsumo #}
+          <div>
+            <label for="valor_m3_sobreconsumo" class="block text-xs font-medium text-stone-500 mb-1">
+              Valor m³ Sobreconsumo <span class="text-red-400">*</span>
+            </label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
+              <input type="number" id="valor_m3_sobreconsumo" name="valor_m3_sobreconsumo" min="0" step="50" required
+                     value="{{ tarifa.valor_m3_sobreconsumo|int if tarifa else '' }}"
+                     class="w-full pl-7 pr-3 py-2.5 border border-sand-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal text-sm"
+                     placeholder="0">
+            </div>
+            <p class="text-xs text-stone-400 mt-1">Precio por m³ que excede el límite de sobreconsumo.</p>
+          </div>
+
+          {# Multa Mora #}
+          <div>
+            <label for="multa_mora" class="block text-xs font-medium text-stone-500 mb-1">
+              Multa por Mora <span class="text-red-400">*</span>
+            </label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
+              <input type="number" id="multa_mora" name="multa_mora" min="0" step="100" required
+                     value="{{ tarifa.multa_mora|int if tarifa else '' }}"
+                     class="w-full pl-7 pr-3 py-2.5 border border-sand-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal text-sm"
+                     placeholder="0">
+            </div>
+            <p class="text-xs text-stone-400 mt-1">Multa fija aplicada a socios con boletas vencidas.</p>
+          </div>
+
+        </div>
+      </fieldset>
+
+      {# ── Separador ─────────────────────────────────────── #}
+      <div class="border-t border-sand-200 my-6"></div>
+
+      {# ── Sección 2: Subsidios Estatales ─────────────────── #}
+      <fieldset class="mb-8">
+        <legend class="flex items-center gap-2 text-sm font-semibold text-navy-800 uppercase tracking-wider mb-4">
+          <svg class="w-4 h-4 text-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+          Subsidios Estatales
+          <span class="text-xs font-normal text-stone-400 ml-1">(Ley 20.998 / Dec. Sup. N° 171)</span>
+        </legend>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+          {# Porcentaje Subsidio #}
+          <div>
+            <label for="porcentaje_subsidio" class="block text-xs font-medium text-stone-500 mb-1">
+              Porcentaje de Subsidio
+            </label>
+            <div class="relative">
+              <input type="number" id="porcentaje_subsidio" name="porcentaje_subsidio" min="0" max="1" step="0.01"
+                     value="{{ tarifa.porcentaje_subsidio if tarifa else '' }}"
+                     class="w-full px-3 py-2.5 border border-sand-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal text-sm"
+                     placeholder="0.85">
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 text-xs">0.0 – 1.0</span>
+            </div>
+            <p class="text-xs text-stone-400 mt-1">
+              Fracción del consumo subsidiada por el Estado (ej: 0.85 = 85%).
+              Dejar vacío si no hay subsidio.
+            </p>
+            <p id="subsidio_preview" class="text-xs text-teal-dark font-medium mt-1 hidden"></p>
+          </div>
+
+          {# Tope Subsidio m³ #}
+          <div>
+            <label for="tope_subsidio_m3" class="block text-xs font-medium text-stone-500 mb-1">
+              Tope Máximo Subsidio
+            </label>
+            <div class="relative">
+              <input type="number" id="tope_subsidio_m3" name="tope_subsidio_m3" min="0" step="1"
+                     value="{{ tarifa.tope_subsidio_m3 if tarifa else '15' }}"
+                     class="w-full px-3 py-2.5 border border-sand-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal text-sm"
+                     placeholder="15">
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 text-xs">m³</span>
+            </div>
+            <p class="text-xs text-stone-400 mt-1">
+              Tope legal: máximo 15 m³ por socio según Decreto Supremo N° 171.
+            </p>
+          </div>
+
+        </div>
+
+        {# Info box de referencia legal #}
+        <div class="mt-4 p-3 bg-navy-50 border border-navy-100 rounded-lg">
+          <div class="flex gap-2">
+            <svg class="w-4 h-4 text-navy-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <p class="text-xs text-navy-700 leading-relaxed">
+              <strong>Referencia legal:</strong> El subsidio aplica como porcentaje sobre el consumo facturado,
+              con un tope máximo de <strong>15 m³</strong> por socio al mes. El cargo fijo y el sobreconsumo
+              no están afectos a subsidio. El porcentaje se ingresa como decimal (ej: 0.85 equivale a 85%).
+            </p>
+          </div>
+        </div>
+      </fieldset>
+
+      {# ── Separador ─────────────────────────────────────── #}
+      <div class="border-t border-sand-200 my-6"></div>
+
+      {# ── Sección 3: Vigencia y Observaciones ───────────── #}
+      <fieldset class="mb-6">
+        <legend class="flex items-center gap-2 text-sm font-semibold text-navy-800 uppercase tracking-wider mb-4">
+          <svg class="w-4 h-4 text-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+          Vigencia
+        </legend>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+          <div>
+            <label for="vigente_desde" class="block text-xs font-medium text-stone-500 mb-1">
+              Vigente Desde
+            </label>
+            <input type="date" id="vigente_desde" name="vigente_desde"
+                   value="{{ tarifa.vigente_desde.isoformat() if tarifa and tarifa.vigente_desde else '' }}"
+                   class="w-full px-3 py-2.5 border border-sand-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal text-sm">
+          </div>
+
+          <div>
+            <label for="observaciones" class="block text-xs font-medium text-stone-500 mb-1">
+              Observaciones
+            </label>
+            <input type="text" id="observaciones" name="observaciones"
+                   value="{{ tarifa.observaciones if tarifa and tarifa.observaciones else '' }}"
+                   class="w-full px-3 py-2.5 border border-sand-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal text-sm"
+                   placeholder="Ej: Ajuste por resolución municipal 2025...">
+          </div>
+
+        </div>
+      </fieldset>
+
+      {# ── Error container ───────────────────────────────── #}
+      <div id="formError" class="hidden mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200 flex items-start gap-2">
+        <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span id="formErrorText"></span>
+      </div>
+
+      {# ── Botones ───────────────────────────────────────── #}
+      <div class="flex flex-col sm:flex-row gap-3 justify-end pt-2">
+        <button type="button" id="btnPreview"
+                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-navy-700 bg-white border border-navy-200 rounded-lg hover:bg-navy-50 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+          Vista Previa
+        </button>
+        <button type="submit" id="btnSave"
+                class="inline-flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-navy-600 rounded-lg hover:bg-navy-700 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+          {% if tarifa %}Actualizar Tarifa{% else %}Crear y Activar{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {# ── Vista Previa de Simulación (oculta por defecto) ──── #}
+  <div id="previewSection" class="hidden bg-white rounded-xl border border-sand-200 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-sand-200 bg-sand-50">
+      <h2 class="text-lg font-heading text-navy-900">Simulación de Cobro</h2>
+      <p class="text-xs text-stone-500 mt-0.5">Ejemplo: socio con 12 m³ de consumo y otro con 25 m³.</p>
+    </div>
+    <div class="p-6">
+      <div id="previewCards" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {# Se llena via JS #}
+      </div>
+    </div>
+  </div>
+
+  {# ── Historial de Configuraciones ─────────────────────── #}
+  {% if historial and historial|length > 1 %}
+  <div class="bg-white rounded-xl border border-sand-200 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-sand-200 bg-sand-50">
+      <h2 class="text-lg font-heading text-navy-900">Historial de Configuraciones</h2>
+      <p class="text-xs text-stone-500 mt-0.5">Cada cambio de tarifa crea un nuevo registro para trazabilidad.</p>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-navy-50">
+            <th class="px-4 py-3 text-left text-xs font-semibold text-navy-800 uppercase tracking-wider">ID</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-navy-800 uppercase tracking-wider">Cargo Fijo</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-navy-800 uppercase tracking-wider">Valor m³</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-navy-800 uppercase tracking-wider">Subsidio</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-navy-800 uppercase tracking-wider">Vigente Desde</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-navy-800 uppercase tracking-wider">Estado</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-navy-800 uppercase tracking-wider">Creada</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-sand-100">
+          {% for t in historial %}
+          <tr class="hover:bg-sand-50 transition-colors">
+            <td class="px-4 py-3 font-mono text-stone-600">#{{ t.id }}</td>
+            <td class="px-4 py-3 font-mono">${{ '{:,.0f}'.format(t.cargo_fijo) }}</td>
+            <td class="px-4 py-3 font-mono">${{ '{:,.0f}'.format(t.valor_m3_base) }}</td>
+            <td class="px-4 py-3">
+              {% if t.porcentaje_subsidio and t.porcentaje_subsidio > 0 %}
+                <span class="text-teal-dark font-medium">{{ t.porcentaje_subsidio_display }}</span>
+              {% else %}
+                <span class="text-stone-400">Sin subsidio</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-stone-600">
+              {{ t.vigente_desde.strftime('%d/%m/%Y') if t.vigente_desde else '—' }}
+            </td>
+            <td class="px-4 py-3">
+              {% if t.activo %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-100 text-teal-800">
+                  <span class="w-1.5 h-1.5 rounded-full bg-teal-500"></span>Activa
+                </span>
+              {% else %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-100 text-stone-500">
+                  Inactiva
+                </span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-stone-500 text-xs">
+              {{ t.created_at.strftime('%d/%m/%Y %H:%M') if t.created_at else '—' }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+{# ── Toast container ───────────────────────────────────── #}
+<div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  (function () {
+    // ── Helpers ─────────────────────────────────────────
+
+    function formatCLP(val) {
+      return '$' + Number(val || 0).toLocaleString('es-CL', { maximumFractionDigits: 0 });
+    }
+
+    function showToast(msg, type) {
+      type = type || 'success';
+      var container = document.getElementById('toast-container');
+      var toast = document.createElement('div');
+      var bgClass = type === 'success'
+        ? 'bg-teal-600 text-white'
+        : type === 'error'
+          ? 'bg-red-600 text-white'
+          : 'bg-amber-500 text-white';
+      toast.className = bgClass + ' px-4 py-3 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2 transform translate-x-full';
+      toast.style.transition = 'transform 0.3s ease';
+      toast.innerHTML = '<span>' + msg + '</span>';
+      container.appendChild(toast);
+      requestAnimationFrame(function () {
+        toast.classList.remove('translate-x-full');
+      });
+      setTimeout(function () {
+        toast.classList.add('translate-x-full');
+        setTimeout(function () { toast.remove(); }, 300);
+      }, 4000);
+    }
+
+    function getFormValues() {
+      return {
+        cargo_fijo: parseFloat(document.getElementById('cargo_fijo').value) || 0,
+        valor_m3_base: parseFloat(document.getElementById('valor_m3_base').value) || 0,
+        limite_sobreconsumo: parseInt(document.getElementById('limite_sobreconsumo').value) || 15,
+        valor_m3_sobreconsumo: parseFloat(document.getElementById('valor_m3_sobreconsumo').value) || 0,
+        multa_mora: parseFloat(document.getElementById('multa_mora').value) || 0,
+        porcentaje_subsidio: parseFloat(document.getElementById('porcentaje_subsidio').value) || 0,
+        tope_subsidio_m3: parseInt(document.getElementById('tope_subsidio_m3').value) || 15,
+      };
+    }
+
+    // ── Preview de subsidio en tiempo real ──────────────
+
+    var inputSubsidio = document.getElementById('porcentaje_subsidio');
+    var previewSubsidio = document.getElementById('subsidio_preview');
+
+    function updateSubsidioPreview() {
+      var val = parseFloat(inputSubsidio.value);
+      if (val > 0 && val <= 1) {
+        previewSubsidio.textContent = 'Subsidio: ' + (val * 100).toFixed(0) + '% del consumo (tope 15 m³)';
+        previewSubsidio.classList.remove('hidden');
+      } else {
+        previewSubsidio.classList.add('hidden');
+      }
+    }
+
+    inputSubsidio.addEventListener('input', updateSubsidioPreview);
+    updateSubsidioPreview();
+
+    // ── Simulación de cobro ─────────────────────────────
+
+    function calcularEjemplo(consumo, t) {
+      var fijo = t.cargo_fijo;
+      var basico_m3 = Math.min(consumo, t.limite_sobreconsumo);
+      var sobre_m3 = Math.max(0, consumo - t.limite_sobreconsumo);
+      var monto_basico = Math.round(basico_m3 * t.valor_m3_base);
+      var monto_sobre = Math.round(sobre_m3 * t.valor_m3_sobreconsumo);
+      var monto_sub = 0;
+      if (t.porcentaje_subsidio > 0 && consumo > 0) {
+        var m3_sub = Math.min(consumo, t.tope_subsidio_m3);
+        monto_sub = Math.round(m3_sub * t.valor_m3_base * t.porcentaje_subsidio);
+      }
+      var total = Math.max(0, Math.round(fijo + monto_basico + monto_sobre - monto_sub));
+
+      return {
+        consumo: consumo,
+        fijo: fijo,
+        basico_m3: basico_m3,
+        basico: monto_basico,
+        sobre_m3: sobre_m3,
+        sobre: monto_sobre,
+        subsidio: monto_sub,
+        total: total,
+      };
+    }
+
+    function renderPreviewCard(ex, label) {
+      return '' +
+        '<div class="border border-sand-200 rounded-lg p-4">' +
+          '<div class="flex items-center justify-between mb-3">' +
+            '<h3 class="font-heading text-navy-900">' + label + '</h3>' +
+            '<span class="text-xs px-2 py-0.5 rounded bg-navy-50 text-navy-700 font-mono">' + ex.consumo + ' m³</span>' +
+          '</div>' +
+          '<div class="space-y-2 text-sm">' +
+            '<div class="flex justify-between"><span class="text-stone-500">Cargo fijo</span><span class="font-mono">' + formatCLP(ex.fijo) + '</span></div>' +
+            '<div class="flex justify-between"><span class="text-stone-500">Consumo (' + ex.basico_m3 + ' m³)</span><span class="font-mono">' + formatCLP(ex.basico) + '</span></div>' +
+            (ex.sobre > 0 ? '<div class="flex justify-between"><span class="text-amber-600">Sobreconsumo (' + ex.sobre_m3 + ' m³)</span><span class="font-mono text-amber-600">' + formatCLP(ex.sobre) + '</span></div>' : '') +
+            (ex.subsidio > 0 ? '<div class="flex justify-between"><span class="text-teal-dark">Subsidio (−)</span><span class="font-mono text-teal-dark">−' + formatCLP(ex.subsidio) + '</span></div>' : '') +
+            '<div class="border-t border-sand-200 pt-2 flex justify-between font-semibold"><span class="text-navy-900">Total a pagar</span><span class="font-mono text-navy-900 text-lg">' + formatCLP(ex.total) + '</span></div>' +
+          '</div>' +
+        '</div>';
+    }
+
+    // ── Botón Vista Previa ──────────────────────────────
+
+    document.getElementById('btnPreview').addEventListener('click', function () {
+      var t = getFormValues();
+      if (t.cargo_fijo === 0 && t.valor_m3_base === 0) {
+        showToast('Complete al menos el cargo fijo y el valor m³ base para simular.', 'warning');
+        return;
+      }
+
+      var ex1 = calcularEjemplo(12, t);
+      var ex2 = calcularEjemplo(25, t);
+
+      var container = document.getElementById('previewCards');
+      container.innerHTML = renderPreviewCard(ex1, 'Consumo Bajo') + renderPreviewCard(ex2, 'Consumo Alto');
+
+      document.getElementById('previewSection').classList.remove('hidden');
+      document.getElementById('previewSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    // ── Submit (Fetch AJAX) ─────────────────────────────
+
+    var form = document.getElementById('tariffForm');
+    var submitting = false;
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (submitting) return;
+
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      var btn = document.getElementById('btnSave');
+      var errorDiv = document.getElementById('formError');
+      var errorText = document.getElementById('formErrorText');
+
+      errorDiv.classList.add('hidden');
+      submitting = true;
+      btn.disabled = true;
+      btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg> Guardando...';
+
+      var formData = new FormData(form);
+      formData.append('csrf_token', '{{ csrf_token() }}');
+
+      fetch('{{ url_for("billing.config_save") }}', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+      })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.success) {
+          showToast(data.message, 'success');
+          setTimeout(function () { location.reload(); }, 1000);
+        } else {
+          errorText.textContent = data.error || 'Error desconocido.';
+          if (data.field) {
+            errorText.textContent += ' (Campo: ' + data.field + ')';
+          }
+          errorDiv.classList.remove('hidden');
+          errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      })
+      .catch(function () {
+        errorText.textContent = 'Error de conexión. Intente nuevamente.';
+        errorDiv.classList.remove('hidden');
+      })
+      .finally(function () {
+        submitting = false;
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> ' +
+          ('{{ "Actualizar Tarifa" if tarifa else "Crear y Activar" }}');
+      });
+    });
+
+  })();
+</script>
+{% endblock %}
