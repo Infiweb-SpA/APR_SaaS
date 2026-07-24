@@ -291,7 +291,7 @@ class Meter(db.Model):
     partner = relationship('Partner', back_populates='meters', lazy='joined')
     created_by = relationship('User', foreign_keys=[created_by_id], lazy='selectin')
     updated_by = relationship('User', foreign_keys=[updated_by_id], lazy='selectin')
-    # readings = relationship('Reading', back_populates='meter', lazy='dynamic') # Módulo 5
+    readings = relationship('Reading', back_populates='meter', lazy='dynamic')
 
     # ── VALIDADORES ─────────────────────────────────────────
     @validates('numero_serie')

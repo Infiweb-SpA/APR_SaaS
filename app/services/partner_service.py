@@ -13,6 +13,9 @@ from app import db
 from app.models.partner import Partner, Meter, Sector, PartnerStatus, MeterStatus
 from app.models.user import User
 from app.services.rut_validator import clean_rut, format_rut, validate_rut
+from app.services.reading_service import (
+    get_lecturas_stats, get_consumption_history_for_portal,
+)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -482,10 +485,20 @@ def get_admin_stats() -> Dict[str, Any]:
     activos = Partner.query.filter(Partner.estado == PartnerStatus.ACTIVO).count()
     cortados = Partner.query.filter(Partner.estado == PartnerStatus.CORTADO).count()
     sin_conexion = Partner.query.filter(Partner.estado == PartnerStatus.SIN_CONEXION).count()
-    
+
     medidores_instalados = Meter.query.filter_by(es_actual=True).count()
     medidores_bodega = Meter.query.filter_by(estado=MeterStatus.BODEGA, partner_id=None).count()
-    
+
+    # Integrar stats reales de lecturas (Módulo 5)
+    try:
+        lecturas_stats = get_lecturas_stats()
+    except Exception:
+        lecturas_stats = {
+            'pct_lecturas': 0,
+            'lecturas_tomadas': 0,
+            'consumo_promedio': 0,
+        }
+
     return {
         'total_socios': total,
         'socios_activos': activos,
@@ -495,12 +508,12 @@ def get_admin_stats() -> Dict[str, Any]:
         'medidores_bodega': medidores_bodega,
         'total_recaudado': 0,
         'meta_recaudacion': 0,
-        'pct_lecturas': 0,
-        'lecturas_tomadas': 0,
-        'lecturas_total': medidores_instalados,
+        'pct_lecturas': lecturas_stats.get('pct_lecturas', 0),
+        'lecturas_tomadas': lecturas_stats.get('lecturas_tomadas', 0),
+        'lecturas_total': lecturas_stats.get('total_medidores', medidores_instalados),
         'deudores_mora': 0,
         'monto_mora': 0,
-        'consumo_promedio': 0,
+        'consumo_promedio': lecturas_stats.get('consumo_promedio', 0),
     }
 
 
@@ -511,10 +524,10 @@ def get_socio_portal_data(user: User) -> Dict[str, Any]:
             'consumption_history': [],
             'recent_bills': [],
         }
-    
+
     partner = user.partner_profile.first()
     meter = partner.medidor_activo
-    
+
     socio_data = {
         'nombre': partner.nombre,
         'rut': partner.rut,
@@ -527,13 +540,21 @@ def get_socio_portal_data(user: User) -> Dict[str, Any]:
         'consumo_actual': 0,
         'consumo_promedio': 0,
     }
-    
+
     if meter and meter.ultima_lectura_valor is not None:
         socio_data['consumo_actual'] = meter.ultima_lectura_valor - meter.lectura_instalacion
-    
+
+    # Integrar historial real de consumos (Módulo 5)
+    consumption_history = []
+    if meter:
+        try:
+            consumption_history = get_consumption_history_for_portal(meter.id, months=12)
+        except Exception:
+            consumption_history = []
+
     return {
         'socio': socio_data,
-        'consumption_history': [],
+        'consumption_history': consumption_history,
         'recent_bills': [],
     }
 

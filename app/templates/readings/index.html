@@ -1,0 +1,618 @@
+{% extends 'layouts/base_admin.html' %}
+
+{% block title %}Lecturas de Consumo – APR{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.tailwindcss.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.tailwindcss.min.css">
+
+  <style>
+    /* ── DataTables CSS (mismo patrón que partners/index.html) ── */
+    .dataTables_wrapper { padding: 0; }
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter { margin-bottom: 1rem; }
+    .dataTables_wrapper .dataTables_length select,
+    .dataTables_wrapper .dataTables_filter input {
+      border: 1px solid #e8e4de; border-radius: 0.5rem;
+      padding: 0.5rem 0.75rem; font-size: 0.875rem;
+      color: #1c1917; background: white;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .dataTables_wrapper .dataTables_length select:focus,
+    .dataTables_wrapper .dataTables_filter input:focus {
+      outline: none; border-color: #0d9488;
+      box-shadow: 0 0 0 3px rgba(13,148,136,0.15);
+    }
+    .dataTables_wrapper .dataTables_length label,
+    .dataTables_wrapper .dataTables_filter label {
+      font-size: 0.875rem; color: #78716c;
+    }
+    .dataTables_wrapper .dataTables_info {
+      font-size: 0.8125rem; color: #78716c; padding-top: 0.75rem;
+    }
+    .dataTables_wrapper .dataTables_paginate { padding-top: 0.75rem; }
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+      padding: 0.375rem 0.75rem; margin: 0 2px;
+      font-size: 0.8125rem; font-weight: 500;
+      color: #1c1917; background: white;
+      border: 1px solid #e8e4de; border-radius: 0.5rem;
+      transition: all 0.15s;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+      background: #f0fdfa; border-color: #0d9488; color: #0d9488;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+      background: #134e4a; border-color: #134e4a; color: white;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+      opacity: 0.4; pointer-events: none;
+    }
+    table.dataTable { border-collapse: collapse !important; width: 100% !important; }
+    table.dataTable thead th {
+      background: #eef5fb; color: #071e30;
+      font-size: 0.75rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      padding: 0.75rem 1rem;
+      border-bottom: 2px solid #d6d3d1; white-space: nowrap;
+    }
+    table.dataTable tbody td {
+      padding: 0.625rem 1rem; font-size: 0.875rem;
+      color: #1c1917; border-bottom: 1px solid #f5f3f0;
+      vertical-align: middle;
+    }
+    table.dataTable tbody tr:hover { background: rgba(7,30,48,0.03); }
+    table.dataTable tbody tr.even { background: #faf9f7; }
+    table.dataTable tbody tr.even:hover { background: rgba(7,30,48,0.03); }
+    table.dataTable.no-footer { border-bottom: none; }
+    .dataTables_wrapper .dataTables_scrollHead { border-bottom: 2px solid #d6d3d1; }
+    .dataTables_wrapper .dataTables_processing {
+      background: rgba(250,249,247,0.9); border: 1px solid #e8e4de;
+      border-radius: 0.75rem; padding: 1rem 2rem;
+      font-size: 0.875rem; color: #57534e;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    /* Badges de estado de lectura */
+    .badge-reading {
+      display: inline-flex; align-items: center; gap: 0.375rem;
+      padding: 0.25rem 0.75rem; border-radius: 9999px;
+      font-size: 0.75rem; font-weight: 600; white-space: nowrap;
+    }
+    .badge-reading .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+    }
+    .badge-reading-pendiente { background: #fef3c7; color: #92400e; }
+    .badge-reading-pendiente .dot { background: #f59e0b; }
+    .badge-reading-validada { background: #ccfbf1; color: #115e59; }
+    .badge-reading-validada .dot { background: #14b8a6; }
+    .badge-reading-rechazada { background: #fee2e2; color: #991b1b; }
+    .badge-reading-rechazada .dot { background: #ef4444; }
+    .badge-reading-anulada { background: #f5f5f4; color: #57534e; }
+    .badge-reading-anulada .dot { background: #a8a29e; }
+
+    /* Acciones */
+    .actions-group { display: inline-flex; gap: 0.375rem; align-items: center; }
+    .action-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 2rem; height: 2rem; border-radius: 0.5rem;
+      border: 1px solid #e8e4de; background: white; color: #57534e;
+      transition: all 0.15s; text-decoration: none;
+    }
+    .action-btn:hover { border-color: #0d9488; color: #0d9488; background: #f0fdfa; }
+
+    @media (max-width: 768px) {
+      .dataTables_wrapper .dataTables_length,
+      .dataTables_wrapper .dataTables_filter { float: none !important; text-align: left !important; }
+      table.dataTable thead th { padding: 0.5rem 0.625rem; font-size: 0.6875rem; }
+      table.dataTable tbody td { padding: 0.5rem 0.625rem; font-size: 0.8125rem; }
+    }
+    div.dataTables_wrapper div.dataTables_processing {
+      top: 50%; transform: translateY(-50%);
+    }
+        /* Checkbox de selección */
+    .reading-checkbox {
+      width: 1rem; height: 1rem;
+      accent-color: #0d9488; /* teal */
+      cursor: pointer;
+      border-radius: 0.25rem;
+    }
+    .reading-checkbox:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    /* Fila seleccionada */
+    tr.selected-row {
+      background: rgba(13, 148, 136, 0.06) !important;
+    }
+    /* Badge de contador */
+    .selection-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 1.25rem;
+      height: 1.25rem;
+      padding: 0 0.375rem;
+      border-radius: 9999px;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      background: #0d9488;
+      color: white;
+    }
+    @keyframes slide-in {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  {# ── Header ────────────────────────────────────────────── #}
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-heading text-navy-900">Lecturas de Consumo</h1>
+      <p class="text-stone-500 mt-1">Listado, validación y control de lecturas mensuales de medidores.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      {% if current_user.has_permission('readings', 2) %}
+      <a href="{{ url_for('readings.capture') }}"
+         class="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium text-sm">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        Capturar Lecturas
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── Filtros ────────────────────────────────────────────── #}
+  <div class="bg-white rounded-xl border border-sand-200 p-4 sm:p-6 shadow-sm">
+    <form id="filterForm" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div>
+        <label class="block text-xs font-medium text-stone-500 mb-1">Buscar</label>
+        <div class="relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input type="text" name="search" id="searchInput"
+                 class="w-full pl-10 pr-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm"
+                 placeholder="RUT, nombre, medidor...">
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-stone-500 mb-1">Periodo</label>
+        <select name="periodo" id="periodoFilter"
+                class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm bg-white">
+          <option value="">Todos los periodos</option>
+          {% for p in periodos %}
+          <option value="{{ p[0] }}">{{ p[1] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-stone-500 mb-1">Estado</label>
+        <select name="status" id="statusFilter"
+                class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm bg-white">
+          <option value="">Todos los estados</option>
+          {% for e in estados %}
+          <option value="{{ e[0] }}">{{ e[1] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-stone-500 mb-1">Sector</label>
+        <select name="sector_id" id="sectorFilter"
+                class="w-full px-3 py-2 border border-sand-300 rounded-lg focus:ring-2 focus:ring-navy-500 focus:border-navy-500 text-sm bg-white">
+          <option value="0">Todos los sectores</option>
+          {% for s in sectores %}
+          <option value="{{ s.id }}">{{ s.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex items-end">
+        <button type="button" id="btnClearFilters"
+                class="w-full px-4 py-2 text-sm font-medium text-stone-600 bg-white border border-sand-300 rounded-lg hover:bg-sand-100 transition-colors">
+          Limpiar filtros
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {# ── Tabla ──────────────────────────────────────────────── #}
+  <div class="bg-white rounded-xl border border-sand-200 shadow-sm overflow-hidden">
+    <div class="p-1">
+      <table id="tablaLecturas" class="w-full" style="width:100%">
+                <thead>
+          <tr>
+            <th class="no-sort" style="width:32px">
+              <input type="checkbox" id="selectAll" class="reading-checkbox" title="Seleccionar todos">
+            </th>
+            <th>Periodo</th>
+            <th>Socio</th>
+            <th>Medidor</th>
+            <th>Sector</th>
+            <th>Lect. Anterior</th>
+            <th>Lect. Actual</th>
+            <th>Consumo (m³)</th>
+            <th>Estado</th>
+            <th>Fecha</th>
+            <th class="text-right no-sort">Acciones</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── Resumen inferior ──────────────────────────────────── #}
+  <div class="flex flex-wrap gap-3 justify-between items-center text-sm text-stone-500">
+    <div class="flex items-center gap-4">
+      {% if current_user.has_permission('readings', 2) %}
+        <button id="btnValidateSelected"
+            class="inline-flex items-center gap-1.5 text-teal-600 hover:text-teal-800 font-medium">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        Aprobar seleccionadas
+        <span id="selectionCount" class="selection-badge" style="display:none">0</span>
+      </button>
+      {% endif %}
+      <a href="{{ url_for('readings.capture') }}"
+         class="inline-flex items-center gap-1.5 text-navy-600 hover:text-navy-800 font-medium">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        Ir a Captura
+      </a>
+    </div>
+    <div>
+      <span id="tableInfo"></span>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+
+  <script>
+    $(function () {
+
+      // ── Helpers ──
+      function badgeReading(status, raw) {
+        var cls = 'badge-reading badge-reading-' + raw;
+        return '<span class="' + cls + '"><span class="dot"></span>' + status + '</span>';
+      }
+
+      function accionesHtml(row) {
+        var detailUrl = '/readings/' + row.id;
+        var html = '<div class="actions-group">';
+
+        // Ver detalle (siempre)
+        html += '<a href="' + detailUrl + '" class="action-btn" title="Ver detalle">';
+        html += '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>';
+        html += '</a>';
+
+        html += '</div>';
+        return html;
+      }
+
+      function consumoDisplay(consumo, multiplicador) {
+        if (consumo === null || consumo === undefined) return '<span class="text-stone-400">—</span>';
+        var val = parseInt(consumo, 10);
+        var cls = val > 0 ? 'text-navy-700 font-medium' : 'text-stone-400';
+        var suffix = multiplicador > 1 ? ' <span class="text-xs text-stone-400">(x' + multiplicador + ')</span>' : '';
+        return '<span class="font-mono text-sm ' + cls + '">' + val + '</span>' + suffix;
+      }
+
+      // ── DataTable ──
+      var table = $('#tablaLecturas').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+          url: '{{ url_for("readings.api_list") }}',
+          type: 'GET',
+          data: function (d) {
+            d.periodo = $('#periodoFilter').val();
+            d.status = $('#statusFilter').val();
+            d.sector_id = $('#sectorFilter').val();
+          },
+          error: function (xhr) {
+            console.error('Error cargando lecturas:', xhr);
+          }
+        },
+                columns: [
+          {
+            data: null,
+            orderable: false,
+            searchable: false,
+            className: 'text-center',
+            width: '32px',
+            render: function (data, type, row) {
+              // Solo mostrar checkbox si la lectura está pendiente
+              if (row.status_raw === 'pendiente') {
+                return '<input type="checkbox" class="reading-checkbox row-checkbox" data-id="' + row.id + '">';
+              }
+              return '';
+            }
+          },
+          {
+            data: 'periodo_display',
+            className: 'font-medium text-sm whitespace-nowrap',
+            width: '100px'
+          },
+          {
+            data: 'partner_nombre',
+            render: function (data, type, row) {
+              return '<div>' +
+                '<span class="font-medium text-sm">' + (data || '-') + '</span>' +
+                '<br><span class="text-xs text-stone-400 font-mono">' + (row.partner_rut || '') + '</span>' +
+                '</div>';
+            }
+          },
+          {
+            data: 'meter_serie',
+            className: 'font-mono text-sm',
+            render: function (data) {
+              return data ? '<span class="text-navy-700">' + data + '</span>' : '<span class="text-stone-400">—</span>';
+            }
+          },
+          {
+            data: 'sector',
+            className: 'text-sm',
+            render: function (data) {
+              if (!data || data === '-') return '<span class="text-stone-400">Sin asignar</span>';
+              return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-navy-50 text-navy-700">' + data + '</span>';
+            }
+          },
+          {
+            data: 'lectura_anterior',
+            className: 'font-mono text-sm text-right',
+            width: '90px',
+            render: function (data) {
+              return '<span class="text-stone-600">' + (data !== null ? data : '—') + '</span>';
+            }
+          },
+          {
+            data: 'lectura_actual',
+            className: 'font-mono text-sm text-right',
+            width: '90px',
+            render: function (data) {
+              return '<span class="text-stone-900 font-medium">' + (data !== null ? data : '—') + '</span>';
+            }
+          },
+          {
+            data: 'consumo',
+            className: 'text-right',
+            width: '110px',
+            render: function (data, type, row) {
+              return consumoDisplay(data, row.multiplicador);
+            }
+          },
+          {
+            data: null,
+            orderable: false,
+            width: '120px',
+            render: function (row) {
+              return badgeReading(row.status, row.status_raw);
+            }
+          },
+          {
+            data: 'fecha',
+            className: 'text-sm text-stone-600 whitespace-nowrap',
+            width: '100px'
+          },
+          {
+            data: null,
+            orderable: false,
+            searchable: false,
+            className: 'text-right',
+            width: '60px',
+            render: function (row) {
+              return accionesHtml(row);
+            }
+          }
+        ],
+        order: [[1, 'desc'], [9, 'desc']],
+        pageLength: 25,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+        language: {
+          url: '//cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json',
+          processing: 'Cargando lecturas...',
+          lengthMenu: 'Mostrar _MENU_ por página',
+          search: 'Filtrar:',
+          info: 'Mostrando _START_ a _END_ de _TOTAL_ lecturas',
+          infoEmpty: 'No hay lecturas para mostrar',
+          infoFiltered: '(filtrado de _MAX_ total)',
+          zeroRecords: 'No se encontraron lecturas con esos criterios',
+          paginate: {
+            first: 'Primero', last: 'Último',
+            next: 'Siguiente', previous: 'Anterior'
+          }
+        },
+        autoWidth: false,
+        scrollX: true,
+        initComplete: function () {
+          var info = this.api().page.info();
+          $('#tableInfo').text(info.recordsTotal + ' lecturas registradas');
+        },
+        drawCallback: function () {
+          var info = this.api().page.info();
+          $('#tableInfo').text(
+            'Mostrando ' + (info.recordsDisplay > 0 ? (info.start + 1) : 0) +
+            '-' + info.end + ' de ' + info.recordsDisplay + ' lecturas'
+          );
+        }
+      });
+
+      // ── Selección y Aprobación Masiva ──
+      var CSRF_TOKEN = '{{ csrf_token() }}';
+      var BATCH_URL = '{{ url_for("readings.api_validate_batch") }}';
+      var selectedIds = new Set();
+
+      // Seleccionar / Deseleccionar todos
+      $('#selectAll').on('change', function () {
+        var checked = this.checked;
+        $('.row-checkbox').each(function () {
+          this.checked = checked;
+          var id = parseInt($(this).data('id'), 10);
+          if (checked) {
+            selectedIds.add(id);
+            $(this).closest('tr').addClass('selected-row');
+          } else {
+            selectedIds.delete(id);
+            $(this).closest('tr').removeClass('selected-row');
+          }
+        });
+        _updateSelectionUI();
+      });
+
+      // Checkbox individual (delegated porque DataTables recrea filas)
+      $('#tablaLecturas').on('change', '.row-checkbox', function () {
+        var id = parseInt($(this).data('id'), 10);
+        if (this.checked) {
+          selectedIds.add(id);
+          $(this).closest('tr').addClass('selected-row');
+        } else {
+          selectedIds.delete(id);
+          $(this).closest('tr').removeClass('selected-row');
+        }
+        // Actualizar "select all"
+        var total = $('.row-checkbox').length;
+        var checkedCount = $('.row-checkbox:checked').length;
+        $('#selectAll').prop('checked', total > 0 && total === checkedCount);
+        _updateSelectionUI();
+      });
+
+      // Restaurar selecciones tras redraw de DataTables
+      table.on('draw', function () {
+        $('.row-checkbox').each(function () {
+          var id = parseInt($(this).data('id'), 10);
+          if (selectedIds.has(id)) {
+            this.checked = true;
+            $(this).closest('tr').addClass('selected-row');
+          }
+        });
+        var total = $('.row-checkbox').length;
+        var checkedCount = $('.row-checkbox:checked').length;
+        $('#selectAll').prop('checked', total > 0 && total === checkedCount);
+        _updateSelectionUI();
+      });
+
+      // Actualizar UI del botón
+      function _updateSelectionUI() {
+        var count = selectedIds.size;
+        var badge = $('#selectionCount');
+        var btn = $('#btnValidateSelected');
+
+        if (count > 0) {
+          badge.text(count).show();
+          btn.removeClass('opacity-50 cursor-not-allowed').prop('disabled', false);
+        } else {
+          badge.hide();
+        }
+      }
+
+      // Botón aprobar seleccionadas
+      $('#btnValidateSelected').on('click', function () {
+        if (selectedIds.size === 0) return;
+
+        var ids = Array.from(selectedIds);
+        var btn = $(this);
+        var originalText = btn.html();
+
+        // Confirmar
+        if (!confirm('¿Aprobar ' + ids.length + ' lectura(s) seleccionada(s)?')) return;
+
+        btn.prop('disabled', true).html(
+          '<svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+          '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Aprobando...'
+        );
+
+        fetch(BATCH_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': CSRF_TOKEN,
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify({ reading_ids: ids }),
+        })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data.success) {
+            _showToast(data.message || 'Lecturas aprobadas.', 'success');
+            selectedIds.clear();
+            $('#selectAll').prop('checked', false);
+            table.ajax.reload(null, false);
+          } else {
+            _showToast(data.error || 'Error al aprobar.', 'error');
+          }
+        })
+        .catch(function () {
+          _showToast('Error de conexión.', 'error');
+        })
+        .finally(function () {
+          btn.prop('disabled', false).html(originalText);
+          _updateSelectionUI();
+        });
+      });
+
+      // Toast helper
+      function _showToast(msg, type) {
+        type = type || 'info';
+        var container = document.getElementById('toast-container');
+        if (!container) {
+          container = document.createElement('div');
+          container.id = 'toast-container';
+          container.className = 'fixed bottom-4 right-4 z-[60] flex flex-col gap-2';
+          document.body.appendChild(container);
+        }
+        var el = document.createElement('div');
+        var colors = {
+          success: 'bg-teal-600 text-white',
+          error: 'bg-red-600 text-white',
+          warning: 'bg-amber-500 text-white',
+          info: 'bg-navy-600 text-white',
+        };
+        el.className = 'flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg text-sm max-w-sm ' + (colors[type] || colors.info);
+        el.style.animation = 'slide-in 0.3s ease-out';
+        el.textContent = msg;
+        container.appendChild(el);
+        setTimeout(function () {
+          el.style.transition = 'opacity 0.3s ease';
+          el.style.opacity = '0';
+          setTimeout(function () { el.remove(); }, 300);
+        }, 5000);
+      }
+
+      // ── Filtros ──
+      var searchTimer;
+      $('#searchInput').on('keyup', function () {
+        clearTimeout(searchTimer);
+        var val = this.value;
+        searchTimer = setTimeout(function () {
+          table.search(val).draw();
+        }, 350);
+      });
+
+      $('#periodoFilter, #statusFilter, #sectorFilter').on('change', function () {
+        table.ajax.reload();
+      });
+
+      $('#btnClearFilters').on('click', function () {
+        $('#searchInput').val('');
+        $('#periodoFilter').val('');
+        $('#statusFilter').val('');
+        $('#sectorFilter').val('0');
+        table.search('').ajax.reload();
+      });
+
+      $('#searchInput').on('keypress', function (e) {
+        if (e.which === 13) {
+          e.preventDefault();
+          clearTimeout(searchTimer);
+          table.search(this.value).draw();
+        }
+      });
+
+    });
+  </script>
+{% endblock %}

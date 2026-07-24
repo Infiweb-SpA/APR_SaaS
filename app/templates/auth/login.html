@@ -292,6 +292,10 @@
           {% endwith %}
 
           <form method="POST" action="/auth/login" class="space-y-5">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            {# RUT #}
+            <div>"space-y-5">
 
             {# RUT #}
             <div>

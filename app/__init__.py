@@ -54,6 +54,9 @@ def create_app(config_name: str = 'default') -> Flask:
     # app/__init__.py (dentro de create_app)
     from app.blueprints.partners import bp as partners_bp
     app.register_blueprint(partners_bp)
+
+    from app.blueprints.readings import bp as readings_bp
+    app.register_blueprint(readings_bp)
     
     # ── Crear tablas en BD ──────────────────────────────────
     with app.app_context():
