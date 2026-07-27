@@ -425,21 +425,7 @@
     // CSRF token para todas las peticiones AJAX del módulo
     var CSRF_TOKEN = '{{ csrf_token() }}';
 
-    $(function () {
-
-      // ── Helpers ──────────────────────────────────────────
-
-      function formatCLP(val) {
-        return '$' + Number(val || 0).toLocaleString('es-CL', { maximumFractionDigits: 0 });
-      }
-
-      function badgeStatus(status) {
-        var cls = 'badge-bill badge-bill-' + status;
-        var label = status.charAt(0).toUpperCase() + status.slice(1);
-        return '<span class="' + cls + '"><span class="dot"></span>' + label + '</span>';
-      }
-
-      function showToast(msg, type) {
+    function showToast(msg, type) {
         type = type || 'success';
         var container = document.getElementById('toast-container');
         var toast = document.createElement('div');
@@ -459,6 +445,20 @@
           toast.classList.add('translate-x-full');
           setTimeout(function () { toast.remove(); }, 300);
         }, 4000);
+      }
+
+    $(function () {
+
+      // ── Helpers ──────────────────────────────────────────
+
+      function formatCLP(val) {
+        return '$' + Number(val || 0).toLocaleString('es-CL', { maximumFractionDigits: 0 });
+      }
+
+      function badgeStatus(status) {
+        var cls = 'badge-bill badge-bill-' + status;
+        var label = status.charAt(0).toUpperCase() + status.slice(1);
+        return '<span class="' + cls + '"><span class="dot"></span>' + label + '</span>';
       }
 
       // ── Acciones (FIX 33: renderizadas en frontend) ─────

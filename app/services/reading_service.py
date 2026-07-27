@@ -212,7 +212,7 @@ def capture_reading(data: dict, user_id: int) -> Reading:
             f"y no admite lecturas."
         )
 
-    # 3. Parsear datos
+        # 3. Parsear datos
     lectura_actual = _to_int(data.get('lectura_actual'))
     if lectura_actual is None:
         raise ValidationError("La lectura actual es obligatoria", field='lectura_actual')
@@ -220,7 +220,7 @@ def capture_reading(data: dict, user_id: int) -> Reading:
         raise ValidationError("La lectura no puede ser negativa", field='lectura_actual')
 
     fecha = _to_date(data.get('fecha'))
-    periodo = _generate_periodo(fecha)
+    periodo = data.get('periodo') or _generate_periodo(fecha)
 
     # 4. Lectura anterior (cache en Meter o última reading)
     lectura_anterior = meter.ultima_lectura_valor
