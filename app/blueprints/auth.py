@@ -313,6 +313,7 @@ def _is_safe_url(target: str) -> bool:
         and ref_url.netloc == test_url.netloc
     )
 
+
 # ── Redirección según rol ──────────────────────────────────
 
 def _redirect_by_role():
@@ -326,12 +327,10 @@ def _redirect_by_role():
     if current_user.has_permission('auth', 2):
         return redirect(url_for('main.admin_dashboard'))
 
-    # Staff con algún permiso de lectura o escritura → panel admin
+    # Staff con algún permiso de lectura o escritura en módulos activos → panel admin
     if (current_user.has_permission('partners', 1) or
             current_user.has_permission('readings', 1) or
-            current_user.has_permission('billing', 1) or
-            current_user.has_permission('pos', 1) or
-            current_user.has_permission('reports', 1)):
+            current_user.has_permission('billing', 1)):
         return redirect(url_for('main.admin_dashboard'))
 
     # Socio → portal personal

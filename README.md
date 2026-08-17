@@ -24,15 +24,13 @@ El sistema implementa un modelo de **Control de Acceso Basado en Roles (RBAC)** 
 2.  **Operario de Terreno:**
     *   `readings` (Lecturas): Level 2.
     *   `partners` (Catastro): Level 1.
-    *   `reports` (Registros de Cloro/Presión): Level 2.
     *   Demás módulos: Level 0.
-3.  **Secretaria / CaJa:**
+3.  **Secretaria / Caja:**
     *   `partners`: Level 2.
     *   `readings`: Level 1.
-    *   `pos` (Caja/Cobranza): Level 2.
-    *   `billing` (Boletas): Level 1.
+    *   `billing` (Facturación): Level 1 (Lectura) y Level 2 (Cierre de Mes/Configuración).
 4.  **Dirigente / Administrador:**
-    *   Acceso Nivel 2 en todos los módulos administrativos, configuración global de tarifas y gestión de usuarios/permisos.
+    *   Acceso Nivel 2 en todos los módulos administrativos (auth, partners, readings, billing), configuración global de tarifas y gestión de usuarios/permisos.
 
 ---
 
@@ -102,13 +100,16 @@ El sistema implementa un modelo de **Control de Acceso Basado en Roles (RBAC)** 
     *   Ficha Única del Socio (RUT validado, dirección, sector, datos de contacto, estado).
     *   Catastro de Medidores (Nº Serie, Marca, Coordenadas GPS, Estado) en relación $1:N$ con socios.
     *   Gestión de cambio de medidor (registro de lectura final saliente e inicial entrante).
+    *   Gestión de Sectores de Lectura/Facturación.
 *   **Archivos de trabajo:**
-    *   `app/models/partner.py`
-    *   `app/models/meter.py`
+    *   `app/models/partner.py` (Define `Partner`, `Meter`, `Sector`)
+    *   `app/services/partner_service.py` (Lógica transaccional: cambio de medidor, instalación, CRUD)
     *   `app/blueprints/partners.py`
-    *   `app/templates/partners/list.html`
+    *   `app/templates/partners/index.html`
+    *   `app/templates/partners/detail.html`
     *   `app/templates/partners/form.html`
-    *   `app/templates/partners/meter_change.html`
+    *   `app/templates/partners/meters.html`
+    *   `app/templates/partners/sectors.html`
 
 ---
 
@@ -120,12 +121,16 @@ El sistema implementa un modelo de **Control de Acceso Basado en Roles (RBAC)** 
     *   Interfaz con teclado numérico forzado y búsqueda por ruta/sector.
     *   Validación en tiempo real por JS: Alerta si el consumo excede en un 100% el promedio de los últimos 3 meses o si la lectura es menor a la anterior.
     *   Sincronización Offline (`LocalStorage`): En caso de perder señal, guarda las lecturas y habilita envío en lote (`POST`) al recuperar internet.
+    *   Aprobación/Rechazo de lecturas por parte de administración.
 *   **Archivos de trabajo:**
-    *   `app/models/reading.py`
+    *   `app/models/reading.py` (Define `Reading` y `ReadingStatus`)
+    *   `app/services/reading_service.py` (Lógica de captura, validación, sincronización y estadísticas)
     *   `app/blueprints/readings.py`
     *   `app/static/js/offline_sync.js`
     *   `app/static/js/reading_val.js`
     *   `app/templates/readings/capture.html`
+    *   `app/templates/readings/index.html`
+    *   `app/templates/readings/detail.html`
 
 ---
 
@@ -134,68 +139,21 @@ El sistema implementa un modelo de **Control de Acceso Basado en Roles (RBAC)** 
 
 *   **Nivel de Permiso Requerido:** Lectura (`1`), Configurar/Cierre de Mes (`2`).
 *   **Funcionalidades:**
-    *   Configuración de Tarifas (Cargo Fijo, Valor $m^3$ Base, Límite Sobreconsumo, Valor $m^3$ Sobreconsumo, Multa por Mora).
+    *   Configuración de Tarifas con Historial (Cargo Fijo, Valor $m^3$ Base, Límite Sobreconsumo, Valor $m^3$ Sobreconsumo, Multa por Mora).
     *   Cálculo de Subsidios Estatales: Aplica % de subsidio respetando estrictamente el **tope máximo legal de 15 $m^3$** por socio.
     *   Motor Cierre de Mes: Generación masiva de boletas y cálculo de saldos pendientes.
+    *   Ciclo de vida de boletas (Emitida, Pagada, Vencida, Anulada).
 *   **Archivos de trabajo:**
-    *   `app/models/billing.py`
-    *   `app/services/billing_engine.py`
+    *   `app/models/billing.py` (Define `Bill`, `TariffConfig` y `BillStatus`)
+    *   `app/services/billing_service.py` (Motor de cálculo, cierre de mes, estadísticas)
     *   `app/blueprints/billing.py`
     *   `app/templates/billing/config.html`
+    *   `app/templates/billing/index.html`
     *   `app/templates/billing/process.html`
 
 ---
 
-### MÓDULO 7: Facturación Electrónica DTE / SII (`sii`)
-*Objetivo: Emisión de Boletas Electrónicas normadas por el Servicio de Impuestos Internos.*
-
-*   **Nivel de Permiso Requerido:** Lectura (`1`), Emisión/Envío DTE (`2`).
-*   **Funcionalidades:**
-    *   Transformación de datos de cobro a esquema XML tributario del SII.
-    *   Integración vía API REST con proveedor DTE intermedio (OpenFactura, Haulmer, etc.).
-    *   Obtención de timbre electrónico (PDF417) para impresión.
-*   **Archivos de trabajo:**
-    *   `app/services/sii_service.py`
-    *   `app/blueprints/sii.py`
-
----
-
-### MÓDULO 8: Recaudación, Caja y Morosidad (`pos`)
-*Objetivo: Recepción de pagos presenciales y control de deudores.*
-
-*   **Nivel de Permiso Requerido:** Lectura (`1`), Procesar Pagos/Caja (`2`).
-*   **Funcionalidades:**
-    *   Punto de Venta / Caja: Búsqueda rápida de socio, cobro e impresión en ticket térmico (58mm/80mm).
-    *   Listado de Orden de Corte: Detección automática de socios con 2 o más boletas impagas consecutivas.
-*   **Archivos de trabajo:**
-    *   `app/models/payment.py`
-    *   `app/blueprints/pos.py`
-    *   `app/static/js/pos_print.js`
-    *   `app/templates/pos/cashier.html`
-    *   `app/templates/pos/ticket_template.html`
-
----
-
-### MÓDULO 9: Fiscalización SISS y Subsidios Municipales (`reports`)
-*Objetivo: Generación de informes requeridos por la SISS, DSSR y Municipalidades.*
-
-*   **Nivel de Permiso Requerido:** Lectura (`1`), Carga de muestras/Exportar (`2`).
-*   **Funcionalidades:**
-    *   Exportación de informe consolidado de subsidios a Excel (`pandas`/`openpyxl`) según Decreto Supremo Nº 171.
-    *   Balance de Agua (Agua No Facturada = Macro-medición - Micro-mediciones).
-    *   Registro técnico de Cloro Libre Residual (PPM) y nivel de Presión en Puntas de Red.
-*   **Archivos de trabajo:**
-    *   `app/models/technical.py`
-    *   `app/services/siss_reports.py`
-    *   `app/services/export_service.py`
-    *   `app/blueprints/reports.py`
-    *   `app/static/js/charts.js`
-    *   `app/templates/reports/water_balance.html`
-    *   `app/templates/reports/siss_cloro.html`
-
----
-
-## Estructura de Directorios del Proyecto
+## Estructura de Directorios del Proyecto (Actualizada)
 
 ```text
 APR_SaaS/
@@ -213,39 +171,33 @@ APR_SaaS/
 |   |   
 |   +---blueprints
 |   |   |   auth.py
+|   |   |   billing.py
 |   |   |   dashboard.py
 |   |   |   main.py
 |   |   |   partners.py
+|   |   |   readings.py
 |   |   |   __init__.py
 |   |   |   
 |   |   \---__pycache__
-|   |           auth.cpython-39.pyc
-|   |           dashboard.cpython-39.pyc
-|   |           main.cpython-39.pyc
-|   |           partners.cpython-39.pyc
-|   |           __init__.cpython-39.pyc
 |   |           
 |   +---models
+|   |   |   billing.py
 |   |   |   partner.py
+|   |   |   reading.py
 |   |   |   user.py
 |   |   |   __init__.py
 |   |   |   
 |   |   \---__pycache__
-|   |           partner.cpython-39.pyc
-|   |           user.cpython-39.pyc
-|   |           __init__.cpython-39.pyc
 |   |           
 |   +---services
 |   |   |   auth_service.py
+|   |   |   billing_service.py
 |   |   |   partner_service.py
+|   |   |   reading_service.py
 |   |   |   rut_validator.py
 |   |   |   __init__.py
 |   |   |   
 |   |   \---__pycache__
-|   |           auth_service.cpython-39.pyc
-|   |           partner_service.cpython-39.pyc
-|   |           rut_validator.cpython-39.pyc
-|   |           __init__.cpython-39.pyc
 |   |           
 |   +---static
 |   |   +---css
@@ -253,6 +205,8 @@ APR_SaaS/
 |   |   |       
 |   |   +---dist
 |   |   \---js
+|   |           offline_sync.js
+|   |           reading_val.js
 |   |           rut_val.js
 |   |           
 |   +---templates
@@ -262,6 +216,10 @@ APR_SaaS/
 |   |   |       users_admin.html
 |   |   |       
 |   |   +---billing
+|   |   |       config.html
+|   |   |       index.html
+|   |   |       process.html
+|   |   |       
 |   |   +---components
 |   |   |       admin_sidebar.html
 |   |   |       public_navbar.html
@@ -290,16 +248,22 @@ APR_SaaS/
 |   |   |       meters.html
 |   |   |       sectors.html
 |   |   |       
-|   |   +---pos
 |   |   +---readings
-|   |   \---reports
+|   |   |       capture.html
+|   |   |       detail.html
+|   |   |       index.html
+|   |   |       
+|   |   \---__pycache__
+|   |           
 |   \---__pycache__
-|           __init__.cpython-39.pyc
 |           
 +---contextos
 |       modulo1.md
 |       modulo2.md
 |       modulo3.md
+|       modulo4.md
+|       modulo5.md
+|       modulo6.md
 |       
 +---instance
 |       apr_database.sqlite
@@ -310,8 +274,8 @@ APR_SaaS/
 |   |   README
 |   |   script.py.mako
 |   |   
-|   \---versions
+|   +---versions
+|   \---__pycache__
+|           
 +---tests
 \---__pycache__
-        config.cpython-39.pyc
-        wsgi.cpython-39.pyc

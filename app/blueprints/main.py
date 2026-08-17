@@ -17,7 +17,11 @@ def panel():
     Panel principal post-login.
     Redirige según el rol del usuario a la vista correspondiente.
     """
-    if current_user.has_permission('auth', 2):
+    # Staff con algún permiso de lectura o escritura en módulos activos → admin
+    if (current_user.has_permission('auth', 2) or
+            current_user.has_permission('partners', 1) or
+            current_user.has_permission('readings', 1) or
+            current_user.has_permission('billing', 1)):
         return _render_admin_dashboard()
     return _render_socio_portal()
 
@@ -43,7 +47,7 @@ def _render_admin_dashboard():
     """Renderiza el dashboard de staff con datos de ejemplo."""
 
     # Datos de ejemplo — se reemplazarán con consultas reales
-    # cuando los módulos 4, 5, 6 y 8 estén desarrollados.
+    # cuando los módulos 4, 5, 6 estén desarrollados.
     stats = {
         'total_socios': 0,
         'socios_activos': 0,
@@ -75,7 +79,7 @@ def _render_socio_portal():
     """Renderiza el portal personal del socio."""
 
     # Datos de ejemplo — se reemplazarán con consultas reales
-    # cuando los módulos 4, 5, 6 y 8 estén desarrollados.
+    # cuando los módulos 4, 5, 6 estén desarrollados.
     socio_data = {
         'nombre': current_user.nombre,
         'rut': current_user.rut,

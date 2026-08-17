@@ -14,19 +14,19 @@ from app import db
 ROLE_DEFAULTS = {
     'socio': {
         'auth': 2, 'portal_socio': 2, 'partners': 0,
-        'readings': 0, 'billing': 0, 'pos': 0, 'reports': 0,
+        'readings': 0, 'billing': 0,
     },
     'operario': {
         'auth': 1, 'portal_socio': 0, 'partners': 1,
-        'readings': 2, 'billing': 0, 'pos': 0, 'reports': 2,
+        'readings': 2, 'billing': 0,
     },
     'secretaria': {
         'auth': 1, 'portal_socio': 0, 'partners': 2,
-        'readings': 1, 'billing': 1, 'pos': 2, 'reports': 0,
+        'readings': 1, 'billing': 1,
     },
     'dirigente': {
         'auth': 2, 'portal_socio': 2, 'partners': 2,
-        'readings': 2, 'billing': 2, 'pos': 2, 'reports': 2,
+        'readings': 2, 'billing': 2,
     },
 }
 
@@ -39,7 +39,7 @@ ROLE_LABELS = {
 
 ALL_MODULES = [
     'auth', 'portal_socio', 'partners',
-    'readings', 'billing', 'pos', 'reports',
+    'readings', 'billing',
 ]
 
 MODULE_LABELS = {
@@ -48,8 +48,6 @@ MODULE_LABELS = {
     'partners':     'Socios / Medidores',
     'readings':     'Lecturas',
     'billing':      'Facturación',
-    'pos':          'Caja / Cobranza',
-    'reports':      'Reportes SISS',
 }
 
 
